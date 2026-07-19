@@ -49,10 +49,11 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   box-shadow: var(--shadow-card);
 }
-.lock-emoji { font-size: 40px; }
-.lock-card h1 { margin: 14px 0 2px; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-.lock-card .sub { margin: 0; color: var(--ink-2); }
-.lock-card form { margin-top: 24px; display: grid; gap: 10px; }
+.lock-card h1 {
+  margin: 8px 0 28px; font-family: "Climate Crisis", sans-serif;
+  font-size: 1.55rem; font-weight: 400; letter-spacing: -0.02em;
+}
+.lock-card form { margin-top: 0; display: grid; gap: 10px; }
 .lock-card input {
   padding: 15px 16px; border-radius: var(--r-field); font-size: 1.05rem;
   background: var(--field); border: 1px solid transparent; color: var(--ink);
