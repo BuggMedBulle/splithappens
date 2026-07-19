@@ -6,7 +6,7 @@ import { PEOPLE, PASSWORD_SHA256, FIREBASE_CONFIG } from "./config.js";
 //  otherwise localStorage so the app works on a single device.
 // ============================================================
 const firebaseReady = !String(FIREBASE_CONFIG.apiKey).includes("PASTE_ME");
-let store; // { subscribe(cb), add(entry), remove(id) }
+let store; // { subscribe(cb), add(entry), update(id, entry), remove(id) }
 
 async function initStore() {
   if (firebaseReady) {
@@ -22,6 +22,7 @@ async function initStore() {
           (err) => { console.error(err); setSync(false); });
       },
       async add(entry) { await fs.addDoc(col, entry); },
+      async update(id, entry) { await fs.updateDoc(fs.doc(db, "entries", id), entry); },
       async remove(id) { await fs.deleteDoc(fs.doc(db, "entries", id)); },
     };
     setSync(true, "Synkad (Firebase)");
@@ -34,6 +35,7 @@ async function initStore() {
     store = {
       subscribe(cb) { listeners.push(cb); emit(); return () => { listeners = listeners.filter((l) => l !== cb); }; },
       async add(entry) { const a = read(); a.push({ id: crypto.randomUUID(), ...entry }); write(a); emit(); },
+      async update(id, entry) { write(read().map((e) => e.id === id ? { ...e, ...entry } : e)); emit(); },
       async remove(id) { write(read().filter((e) => e.id !== id)); emit(); },
     };
     setSync(true, "Lokalt läge (ingen synk)");
@@ -180,9 +182,18 @@ function renderHistory() {
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
     }
+    if (e.type !== "settlement") {
+      const edit = document.createElement("button");
+      edit.className = "h-edit";
+      edit.innerHTML = '<img src="edit.svg" alt="" />';
+      edit.title = "Redigera";
+      edit.setAttribute("aria-label", `Redigera ${e.desc}`);
+      edit.onclick = () => startEditing(e);
+      li.appendChild(edit);
+    }
     const del = document.createElement("button");
     del.className = "h-del";
-    del.textContent = "✕";
+    del.innerHTML = '<img src="delete.svg" alt="" />';
     del.title = "Ta bort";
     del.onclick = () => { if (confirm("Ta bort denna post?")) store.remove(e.id); };
     li.appendChild(del);
@@ -249,6 +260,7 @@ function setActive(segId, val, key = "val") {
 }
 
 let getPayer, getSplit;
+let EDITING_ID = null;
 
 // ---- category icon popup ----
 const ICON_DEFAULT = "🧾"; // receipt is the default category
@@ -331,13 +343,61 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
-function expenseTimestamp(dateValue) {
+function expenseTimestamp(dateValue, previousTimestamp = null) {
   const [year, month, day] = dateValue.split("-").map(Number);
-  const now = new Date();
+  const now = previousTimestamp ? new Date(previousTimestamp) : new Date();
   return new Date(
     year, month - 1, day,
     now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds(),
   ).getTime();
+}
+
+function dateInputValue(timestamp) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function resetExpenseForm() {
+  const form = document.getElementById("expense-form");
+  EDITING_ID = null;
+  form.reset();
+  document.getElementById("e-date").value = todayInputValue();
+  setActive("e-payer", currentPersonName());
+  setActive("e-split", "even");
+  document.getElementById("e-custom-share").value = "50";
+  document.getElementById("custom-split").hidden = true;
+  document.getElementById("expense-heading").textContent = "Ny utgift";
+  document.getElementById("submit-icon").textContent = "+";
+  document.getElementById("submit-label").textContent = "Lägg till utgift";
+  document.getElementById("edit-cancel").hidden = true;
+  updateCustomSplitLabels();
+  setIcon(ICON_DEFAULT);
+  closeIconPop();
+  updatePreview();
+}
+
+function startEditing(entry) {
+  EDITING_ID = entry.id;
+  document.getElementById("e-desc").value = entry.desc;
+  document.getElementById("e-amount").value = entry.amount;
+  document.getElementById("e-date").value = dateInputValue(entry.ts);
+  setActive("e-payer", PEOPLE[entry.payer].name);
+  setActive("e-split", entry.split || "even");
+  document.getElementById("e-custom-share").value = entry.split === "custom"
+    ? String(Math.round((1 - entry.shareA) * 100))
+    : "50";
+  document.getElementById("custom-split").hidden = entry.split !== "custom";
+  setIcon(entry.icon || ICON_DEFAULT);
+  document.getElementById("expense-heading").textContent = "Redigera utgift";
+  document.getElementById("submit-icon").textContent = "✓";
+  document.getElementById("submit-label").textContent = "Spara ändringar";
+  document.getElementById("edit-cancel").hidden = false;
+  updateCustomSplitLabels();
+  updatePreview();
+  document.getElementById("expense-heading").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function updatePreview() {
@@ -386,24 +446,20 @@ function initApp() {
     const date = dateInput.value;
     if (!desc || !(amount > 0) || !date) return;
     const split = getSplit();
-    await store.add({
+    const existingEntry = EDITING_ID ? ENTRIES.find((entry) => entry.id === EDITING_ID) : null;
+    const expense = {
       type: "expense", desc, amount, icon: getIcon(),
       payer: payerKey(), split,
       shareA: split === "custom" ? customShareA() : null,
-      ts: expenseTimestamp(date),
-    });
-    ev.target.reset();
-    dateInput.value = todayInputValue();
-    setActive("e-payer", currentPersonName());
-    setActive("e-split", "even");
-    document.getElementById("e-custom-share").value = "50";
-    document.getElementById("custom-split").hidden = true;
-    updateCustomSplitLabels();
-    setIcon(ICON_DEFAULT);
-    closeIconPop();
-    updatePreview();
+      ts: expenseTimestamp(date, existingEntry?.ts),
+    };
+    if (EDITING_ID) await store.update(EDITING_ID, expense);
+    else await store.add(expense);
+    resetExpenseForm();
     document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
   });
+
+  document.getElementById("edit-cancel").addEventListener("click", resetExpenseForm);
 
   document.getElementById("settle-btn").addEventListener("click", onSettleClick);
   document.getElementById("confirm-settle").addEventListener("click", confirmSettlement);
