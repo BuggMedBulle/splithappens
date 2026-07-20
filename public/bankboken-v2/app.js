@@ -65,7 +65,7 @@ const TRANSLATIONS = {
     allEven: "Everything is settled. No one owes anything.", owes: "owes", total: "Total",
     noEntries: "No expenses yet. Add your first one above.", noEntriesFor: "No expenses for {name}.",
     page: "Page {page} of {count}", settlement: "Settlement", paid: "paid", received: "received",
-    treated: "treated 💕", delete: "Delete", deleteEntry: "Delete this entry?",
+    treated: "treated {recipient} 💕", delete: "Delete", deleteEntry: "Delete this entry?",
     entitledAll: "{name} is entitled to all of the income.", entitled: "{name} is entitled to {amount}.",
     noDebtFull: "No debt – {name} covers the full amount.", becomesOwed: "{name} owes {recipient} {amount}.",
     welcomeWaiting: "Hi {name}! Waiting for the other person…", createAccountShort: "Create account",
@@ -323,7 +323,7 @@ function renderHistory() {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
       const historyCopy = Math.abs(payerShare - e.amount) < 0.01
-        ? `${who} ${t("treated")}`
+        ? `${who} ${t("treated", { recipient: objectName(otherPersonKey(e.payer)) })}`
         : `${who} ${t("paid")} · ${splitLabel(e)}`;
       li.innerHTML = `
         <div class="h-ico">${e.icon || "🧾"}</div>
