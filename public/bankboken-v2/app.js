@@ -210,7 +210,7 @@ function renderHistory() {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
       const historyCopy = Math.abs(payerShare - e.amount) < 0.01
-        ? `${who} bjöd`
+        ? `${who} bjöd 💕`
         : `${who} betalade · ${split}`;
       li.innerHTML = `
         <div class="h-ico">${e.icon || "🧾"}</div>
