@@ -730,12 +730,40 @@ document.getElementById("auth-mode").addEventListener("click", () => {
   document.getElementById("auth-submit").textContent = registrationMode ? "Skapa konto" : "Logga in";
   document.getElementById("auth-mode").textContent = registrationMode ? "Jag har redan ett konto" : "Skapa ett konto";
   document.getElementById("auth-password").autocomplete = registrationMode ? "new-password" : "current-password";
+  document.getElementById("auth-reset").hidden = registrationMode;
   document.getElementById("auth-error").hidden = true;
+  document.getElementById("auth-success").hidden = true;
+});
+
+document.getElementById("auth-reset").addEventListener("click", async () => {
+  const email = document.getElementById("auth-email").value.trim();
+  const button = document.getElementById("auth-reset");
+  document.getElementById("auth-error").hidden = true;
+  document.getElementById("auth-success").hidden = true;
+  if (!email) {
+    showError("auth-error", new Error("Fyll i din e-postadress först."));
+    document.getElementById("auth-email").focus();
+    return;
+  }
+  try {
+    button.disabled = true;
+    button.textContent = "Skickar…";
+    await authApi.sendPasswordResetEmail(auth, email);
+    const success = document.getElementById("auth-success");
+    success.textContent = "Ett återställningsmail har skickats. Kontrollera även skräpposten.";
+    success.hidden = false;
+  } catch (error) {
+    showError("auth-error", error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Glömt lösenord?";
+  }
 });
 
 document.getElementById("auth-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   document.getElementById("auth-error").hidden = true;
+  document.getElementById("auth-success").hidden = true;
   const email = document.getElementById("auth-email").value.trim();
   const password = document.getElementById("auth-password").value;
   try {
@@ -897,6 +925,7 @@ async function initializeFirebase() {
       document.getElementById("auth-password").required = false;
       document.getElementById("auth-submit").textContent = "Slutför konto";
       document.getElementById("auth-mode").textContent = "Logga ut och byt konto";
+      document.getElementById("auth-reset").hidden = true;
       showError("auth-error", new Error("Kontot är skapat, men profilen saknas. Publicera Firestore-reglerna och slutför sedan kontot här."));
       return;
     }

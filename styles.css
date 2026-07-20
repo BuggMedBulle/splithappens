@@ -78,6 +78,8 @@ button { font-family: inherit; cursor: pointer; }
   margin-top: 14px; padding: 8px; border-radius: 0;
   background: transparent; color: var(--ink-2); font-size: 0.9rem; font-weight: 500;
 }
+.lock-card .auth-reset { margin-top: 0; font-size: 0.82rem; color: var(--ink-3); }
+.success { color: var(--sage-strong); font-size: 0.9rem; margin: 12px 0 0; line-height: 1.4; }
 .auth-card input, .bankbook-card input { letter-spacing: 0; }
 .auth-card input::placeholder, .bankbook-card input::placeholder { letter-spacing: 0; }
 .bankbook-card { max-width: 420px; margin: auto; text-align: left; }
