@@ -363,8 +363,8 @@ function updatePersonLabels() {
   const leftSplitButton = presets.querySelector(`[data-val="${leftSplit}"]`);
   const evenButton = presets.querySelector('[data-val="even"]');
   const rightSplitButton = presets.querySelector(`[data-val="${rightSplit}"]`);
-  leftSplitButton.textContent = `100% ${subjectName(leftKey)}`;
-  rightSplitButton.textContent = `100% ${subjectName(rightKey)}`;
+  leftSplitButton.textContent = subjectName(leftKey);
+  rightSplitButton.textContent = subjectName(rightKey);
   presets.append(leftSplitButton, evenButton, rightSplitButton);
   updateCustomSplitLabels();
 }
