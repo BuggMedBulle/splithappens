@@ -66,6 +66,9 @@ function balanceOf(entries) {
   for (const e of entries) {
     if (e.type === "settlement") {
       bal += (e.payer === "A" ? 1 : -1) * e.amount;
+    } else if (e.type === "income") {
+      const s = sharesOf(e);
+      bal += e.payer === "A" ? -s.b : s.a; // recipient holds the other person's share
     } else {
       const s = sharesOf(e);
       bal += e.payer === "A" ? s.b : -s.a; // other person's share the payer covered
@@ -146,7 +149,7 @@ function renderHistory() {
 
   if (hasEntries) {
     const sum = (who) =>
-      ENTRIES.filter((e) => e.type !== "settlement" && e.payer === who).reduce((s, e) => s + e.amount, 0);
+      ENTRIES.filter((e) => e.type === "expense" && e.payer === who).reduce((s, e) => s + e.amount, 0);
     const amounts = { A: sum("A"), B: sum("B") };
     const leftKey = CURRENT_USER;
     const rightKey = otherPersonKey();
@@ -198,6 +201,15 @@ function renderHistory() {
           <div class="h-sub">${who} betalade ${to}</div>
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
+    } else if (e.type === "income") {
+      li.className = "h-income";
+      li.innerHTML = `
+        <div class="h-ico">${e.icon || "💰"}</div>
+        <div class="h-main">
+          <div class="h-title">${escapeHtml(e.desc)}</div>
+          <div class="h-sub">${who} tog emot · 50/50</div>
+        </div>
+        <div class="h-amt">+${kr(e.amount)}</div>`;
     } else {
       const customLeftKey = CURRENT_USER;
       const customRightKey = otherPersonKey();
@@ -302,7 +314,7 @@ function setActive(segId, val, key = "val") {
     b.classList.toggle("active", b.dataset[key] === val));
 }
 
-let getPayer, getSplit;
+let getEntryType, getPayer, getSplit;
 let EDITING_ID = null;
 
 // ---- category icon popup ----
@@ -396,6 +408,26 @@ function onSplitChange(split) {
   updatePreview();
 }
 
+function onEntryTypeChange(type) {
+  const isIncome = type === "income";
+  document.getElementById("expense-heading").textContent = EDITING_ID
+    ? (isIncome ? "Redigera inkomst" : "Redigera utgift")
+    : (isIncome ? "Ny inkomst" : "Ny utgift");
+  document.getElementById("payer-label").textContent = isIncome ? "Mottaget av" : "Betalat av";
+  document.getElementById("split-field").hidden = isIncome;
+  document.getElementById("submit-label").textContent = EDITING_ID
+    ? "Spara ändringar"
+    : (isIncome ? "Lägg till inkomst" : "Lägg till utgift");
+  if (isIncome) {
+    setActive("e-split", "even");
+    document.getElementById("custom-split").hidden = true;
+    if (!EDITING_ID && getIcon() === ICON_DEFAULT) setIcon("💰");
+  } else if (!EDITING_ID && getIcon() === "💰") {
+    setIcon(ICON_DEFAULT);
+  }
+  updatePreview();
+}
+
 function todayInputValue() {
   const now = new Date();
   const year = now.getFullYear();
@@ -427,6 +459,7 @@ function resetExpenseForm() {
   document.getElementById("edit-modal").hidden = true;
   EDITING_ID = null;
   form.reset();
+  setActive("e-type", "expense");
   document.getElementById("e-date").value = todayInputValue();
   setActive("e-payer", currentPersonName());
   setActive("e-split", "even");
@@ -441,6 +474,7 @@ function resetExpenseForm() {
   setIcon(ICON_DEFAULT);
   closeIconPop();
   updatePreview();
+  onEntryTypeChange("expense");
 }
 
 function startEditing(entry) {
@@ -450,6 +484,7 @@ function startEditing(entry) {
   document.getElementById("e-desc").value = entry.desc;
   document.getElementById("e-amount").value = entry.amount;
   document.getElementById("e-date").value = dateInputValue(entry.ts);
+  setActive("e-type", entry.type === "income" ? "income" : "expense");
   setActive("e-payer", entry.payer);
   setActive("e-split", entry.split || "even");
   document.getElementById("e-custom-share").value = entry.split === "custom"
@@ -463,18 +498,25 @@ function startEditing(entry) {
   document.getElementById("edit-delete").hidden = false;
   updateCustomSplitLabels();
   updatePreview();
+  onEntryTypeChange(entry.type === "income" ? "income" : "expense");
   document.getElementById("e-desc").focus();
 }
 
 function updatePreview() {
   const amount = parseFloat(document.getElementById("e-amount").value) || 0;
   updateCustomSplitLabels();
+  const type = getEntryType();
   const split = getSplit(); // 'a' | 'even' | 'b'
   const payer = payerKey();
   const other = payer === "A" ? "B" : "A";
   const el = document.getElementById("split-preview");
 
   if (amount <= 0) { el.hidden = true; return; }
+  if (type === "income") {
+    el.hidden = false;
+    el.textContent = `${subjectName(payer)} tar emot inkomsten. ${subjectName(other)} har rätt till ${kr(amount / 2)}.`;
+    return;
+  }
   const shares = sharesOf({ amount, split, shareA: customShareA() });
   const owes = payerKey() === "A" ? shares.b : shares.a; // what the non-payer owes
   el.hidden = false;
@@ -484,6 +526,7 @@ function updatePreview() {
 }
 
 function initApp() {
+  getEntryType = initSegments("e-type", onEntryTypeChange);
   getPayer = initSegments("e-payer", updatePreview);
   getSplit = initSegments("e-split", onSplitChange);
   initIconPicker();
@@ -508,10 +551,11 @@ function initApp() {
     const amount = parseFloat(document.getElementById("e-amount").value);
     const date = dateInput.value;
     if (!desc || !(amount > 0) || !date) return;
-    const split = getSplit();
+    const type = getEntryType();
+    const split = type === "income" ? "even" : getSplit();
     const existingEntry = EDITING_ID ? ENTRIES.find((entry) => entry.id === EDITING_ID) : null;
     const expense = {
-      type: "expense", desc, amount, icon: getIcon(),
+      type, desc, amount, icon: getIcon(),
       payer: payerKey(), split,
       shareA: split === "custom" ? customShareA() : null,
       ts: expenseTimestamp(date, existingEntry?.ts),
@@ -524,7 +568,9 @@ function initApp() {
 
   document.getElementById("edit-cancel").addEventListener("click", resetExpenseForm);
   document.getElementById("edit-delete").addEventListener("click", async () => {
-    if (!EDITING_ID || !confirm("Ta bort detta utlägg?")) return;
+    const entry = ENTRIES.find((item) => item.id === EDITING_ID);
+    const itemName = entry?.type === "income" ? "denna inkomst" : "detta utlägg";
+    if (!EDITING_ID || !confirm(`Ta bort ${itemName}?`)) return;
     await store.remove(EDITING_ID);
     resetExpenseForm();
   });

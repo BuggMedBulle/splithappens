@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=split-happens-9" />
+  <link rel="stylesheet" href="styles.css?v=split-happens-10" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -82,6 +82,10 @@
       <!-- Ny utgift -->
       <section class="card">
         <h2 id="expense-heading">Ny utgift</h2>
+        <div class="seg entry-type-picker" id="e-type">
+          <button type="button" data-val="expense" class="active">Utgift</button>
+          <button type="button" data-val="income">Inkomst</button>
+        </div>
         <div id="expense-form-home">
         <form id="expense-form">
           <div class="field">
@@ -121,14 +125,14 @@
           </label>
 
           <div class="field">
-            <span class="field-label">Betalat av</span>
+            <span class="field-label" id="payer-label">Betalat av</span>
             <div class="seg" id="e-payer">
               <button type="button" data-val="A" class="active">Person 1</button>
               <button type="button" data-val="B">Person 2</button>
             </div>
           </div>
 
-          <div class="field">
+          <div class="field" id="split-field">
             <span class="field-label">Delning</span>
             <div class="split-picker" id="e-split">
               <div class="seg split-presets">
@@ -202,6 +206,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=split-happens-12"></script>
+  <script type="module" src="app.js?v=split-happens-13"></script>
 </body>
 </html>
