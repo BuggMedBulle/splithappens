@@ -457,6 +457,7 @@ function initApp() {
 
   const dateInput = document.getElementById("e-date");
   dateInput.value = todayInputValue();
+  dateInput.addEventListener("change", () => dateInput.blur());
 
   document.getElementById("e-amount").addEventListener("input", updatePreview);
   document.getElementById("e-custom-share").addEventListener("input", () => {
