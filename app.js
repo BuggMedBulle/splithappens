@@ -431,19 +431,6 @@ function renderHistory() {
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
     }
-    if (e.type === "settlement") {
-      const directDelete = document.createElement("button");
-      directDelete.type = "button";
-      directDelete.className = "h-del";
-      directDelete.innerHTML = '<img src="trash.svg" alt="" />';
-      directDelete.title = t("delete");
-      directDelete.setAttribute("aria-label", t("delete"));
-      directDelete.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        if (confirm(t("deleteEntry"))) await store.remove(e.id);
-      });
-      li.appendChild(directDelete);
-    }
     const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
     const content = makeSwipeableRow(li, e, openEntry);
     if (e.type !== "settlement") {
