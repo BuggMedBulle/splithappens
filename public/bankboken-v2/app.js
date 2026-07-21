@@ -187,6 +187,7 @@ let CURRENT_USER = localStorage.getItem("bankboken-person");
 let APP_INITIALIZED = false;
 let HISTORY_FILTER = null;
 let HISTORY_PAGE = 1;
+let OPEN_SWIPE_ROW = null;
 const HISTORY_PAGE_SIZE = 10;
 
 function subjectName(personKey) {
@@ -214,6 +215,100 @@ function splitLabel(entry) {
 }
 
 function render() { renderBalance(); renderHistory(); }
+
+function closeSwipeRow(row = OPEN_SWIPE_ROW) {
+  if (!row) return;
+  row.classList.remove("swipe-open", "swiping");
+  row.querySelector(".history-row-content")?.style.removeProperty("transform");
+  if (OPEN_SWIPE_ROW === row) OPEN_SWIPE_ROW = null;
+}
+
+function makeSwipeableRow(row, entry, onOpen) {
+  const content = document.createElement("div");
+  content.className = "history-row-content";
+  while (row.firstChild) content.appendChild(row.firstChild);
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "swipe-delete";
+  deleteButton.setAttribute("aria-label", t("delete"));
+  deleteButton.innerHTML = '<img src="trash.svg" alt="" />';
+  deleteButton.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    if (!confirm(t("deleteEntry"))) return;
+    closeSwipeRow(row);
+    await store.remove(entry.id);
+  });
+
+  row.classList.add("history-row");
+  row.replaceChildren(deleteButton, content);
+
+  let startX = 0;
+  let startY = 0;
+  let dragged = false;
+  let horizontal = false;
+  let directionDecided = false;
+  const revealWidth = 84;
+
+  content.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    if (OPEN_SWIPE_ROW && OPEN_SWIPE_ROW !== row) closeSwipeRow();
+    startX = event.touches[0].clientX;
+    startY = event.touches[0].clientY;
+    dragged = false;
+    horizontal = false;
+    directionDecided = false;
+    row.classList.add("swiping");
+  }, { passive: true });
+
+  content.addEventListener("touchmove", (event) => {
+    if (event.touches.length !== 1) return;
+    const deltaX = event.touches[0].clientX - startX;
+    const deltaY = event.touches[0].clientY - startY;
+    if (!directionDecided && (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8)) {
+      directionDecided = true;
+      horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    }
+    if (!horizontal) return;
+    event.preventDefault();
+    dragged = true;
+    const base = row.classList.contains("swipe-open") ? -revealWidth : 0;
+    const offset = Math.max(-revealWidth, Math.min(0, base + deltaX));
+    content.style.transform = `translateX(${offset}px)`;
+  }, { passive: false });
+
+  content.addEventListener("touchend", () => {
+    row.classList.remove("swiping");
+    if (!dragged) return;
+    const transform = content.style.transform;
+    const offset = Number(transform.match(/-?\d+(?:\.\d+)?/)?.[0] || 0);
+    content.style.removeProperty("transform");
+    if (dragged && offset < -revealWidth / 2) {
+      row.classList.add("swipe-open");
+      OPEN_SWIPE_ROW = row;
+    } else {
+      closeSwipeRow(row);
+    }
+  }, { passive: true });
+
+  content.addEventListener("click", (event) => {
+    if (dragged) {
+      event.preventDefault();
+      event.stopPropagation();
+      dragged = false;
+      return;
+    }
+    if (row.classList.contains("swipe-open")) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSwipeRow(row);
+      return;
+    }
+    onOpen?.();
+  });
+
+  return content;
+}
 
 function renderBalance() {
   const bal = balanceOf(ENTRIES);
@@ -334,25 +429,32 @@ function renderHistory() {
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
     }
+    if (e.type === "settlement") {
+      const directDelete = document.createElement("button");
+      directDelete.type = "button";
+      directDelete.className = "h-del";
+      directDelete.innerHTML = '<img src="trash.svg" alt="" />';
+      directDelete.title = t("delete");
+      directDelete.setAttribute("aria-label", t("delete"));
+      directDelete.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        if (confirm(t("deleteEntry"))) await store.remove(e.id);
+      });
+      li.appendChild(directDelete);
+    }
+    const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
+    const content = makeSwipeableRow(li, e, openEntry);
     if (e.type !== "settlement") {
       li.classList.add("h-expense");
-      li.tabIndex = 0;
-      li.setAttribute("role", "button");
-      li.setAttribute("aria-label", `Redigera ${e.desc}`);
-      li.onclick = () => startEditing(e);
-      li.onkeydown = (event) => {
+      content.tabIndex = 0;
+      content.setAttribute("role", "button");
+      content.setAttribute("aria-label", `Redigera ${e.desc}`);
+      content.onkeydown = (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           startEditing(e);
         }
       };
-    } else {
-      const del = document.createElement("button");
-      del.className = "h-del";
-      del.innerHTML = '<img src="trash.svg" alt="" />';
-      del.title = t("delete");
-      del.onclick = () => { if (confirm(t("deleteEntry"))) store.remove(e.id); };
-      li.appendChild(del);
     }
     list.appendChild(li);
   }

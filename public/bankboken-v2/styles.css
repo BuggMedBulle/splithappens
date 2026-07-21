@@ -350,7 +350,27 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
 }
 .history li.history-date-marker:first-child { margin-top: 0; }
 .history li.h-expense { cursor: pointer; border-radius: 0; }
-.history li.h-expense:active { background: var(--field); }
+.history li.history-row {
+  display: block; padding: 0; overflow: hidden; background: var(--danger);
+}
+.history-row-content {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 15px 2px; background: var(--card);
+  transform: translateX(0); transition: transform 0.2s ease;
+  touch-action: pan-y;
+}
+.history-row.swiping .history-row-content { transition: none; }
+.history-row.swipe-open .history-row-content { transform: translateX(-84px); }
+.history li.h-expense .history-row-content:active { background: var(--field); }
+.swipe-delete {
+  position: absolute; z-index: 0; inset: 0 0 0 auto;
+  display: grid; place-items: center; width: 84px; padding: 0;
+  border: 0; background: var(--danger); color: #fff;
+}
+.swipe-delete img {
+  display: block; width: 23px; height: 23px; opacity: 1;
+  filter: brightness(0) invert(1);
+}
 .h-ico { font-size: 1.3rem; width: 28px; text-align: center; flex-shrink: 0; }
 .h-main { flex: 1; min-width: 0; }
 .h-title { font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
