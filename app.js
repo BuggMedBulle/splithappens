@@ -18,7 +18,7 @@ let openingBankbook = false;
 
 const TRANSLATIONS = {
   sv: {
-    authIntro: "Logga in för att komma åt er delning.", yourName: "Ditt namn", swishNumber: "Swishnummer",
+    authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
     email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", createAccount: "Skapa ett konto",
     forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in den andra personen",
     inviteHelp: "Skicka länken. Den här sidan öppnar appen automatiskt så fort personen har anslutit.",
@@ -50,7 +50,7 @@ const TRANSLATIONS = {
     shopping: "Shopping", experiences: "Upplevelser eller utflykter",
   },
   en: {
-    authIntro: "Log in to access your shared expenses.", yourName: "Your name", swishNumber: "Swish number",
+    authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
     email: "Email", password: "Password, at least 6 characters", login: "Log in", createAccount: "Create an account",
     forgotPassword: "Forgot password?", inviteOther: "Invite the other person",
     inviteHelp: "Send the link. This page opens the app automatically as soon as the other person joins.",
@@ -1005,6 +1005,7 @@ function watchActiveBankbook(bankbookId) {
 }
 
 function updateAuthLabels() {
+  document.querySelector(".auth-card .auth-intro").textContent = t(registrationMode ? "authRegisterIntro" : "authIntro");
   if (profileCompletionMode) {
     document.getElementById("auth-submit").textContent = t("completeAccount");
     document.getElementById("auth-mode").textContent = t("switchAccount");
