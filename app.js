@@ -27,7 +27,7 @@ const TRANSLATIONS = {
     closeSettings: "Stäng inställningar", balance: "Saldo", markPaid: "Markera som swishat", add: "Lägg till",
     expense: "Utgift", income: "Inkomst", description: "Beskrivning", descriptionExample: "t.ex. Matvaror ICA",
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
-    language: "Språk", theme: "Tema", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
+    language: "Språk", theme: "Tema", systemTheme: "Automatiskt", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
     editIncome: "Redigera inkomst", editExpense: "Redigera utgift", save: "Spara ändringar",
     allEven: "Allt är jämnt. Ingen är skyldig något.", oweSelf: "är skyldig", owesOther: "är skyldig", total: "Totalt",
@@ -59,7 +59,7 @@ const TRANSLATIONS = {
     closeSettings: "Close settings", balance: "Balance", markPaid: "Mark as paid", add: "Add",
     expense: "Expense", income: "Income", description: "Description", descriptionExample: "e.g. Groceries",
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
-    language: "Language", theme: "Theme", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
+    language: "Language", theme: "Theme", systemTheme: "Automatic", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
     editIncome: "Edit income", editExpense: "Edit expense", save: "Save changes",
     allEven: "Everything is settled. No one owes anything.", oweSelf: "owe", owesOther: "owes", total: "Total",
@@ -89,14 +89,18 @@ let LANGUAGE = requestedLanguage === "en" || requestedLanguage === "sv"
 if (requestedLanguage === "en" || requestedLanguage === "sv") {
   localStorage.setItem("split-happens-language", LANGUAGE);
 }
-let THEME = localStorage.getItem("split-happens-theme") === "dark" ? "dark" : "light";
+const savedTheme = localStorage.getItem("split-happens-theme");
+let THEME = ["system", "light", "dark"].includes(savedTheme) ? savedTheme : "system";
+const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 function applyTheme() {
-  document.documentElement.dataset.theme = THEME;
-  document.querySelector('meta[name="theme-color"]').content = THEME === "dark" ? "#121211" : "#efede9";
+  const effectiveTheme = THEME === "system" ? (systemTheme.matches ? "dark" : "light") : THEME;
+  document.documentElement.dataset.theme = effectiveTheme;
+  document.querySelector('meta[name="theme-color"]').content = effectiveTheme === "dark" ? "#121211" : "#efede9";
   document.querySelectorAll("#settings-theme button").forEach((button) =>
     button.classList.toggle("active", button.dataset.theme === THEME));
 }
+systemTheme.addEventListener("change", () => { if (THEME === "system") applyTheme(); });
 
 function t(key, values = {}) {
   let text = TRANSLATIONS[LANGUAGE][key] || TRANSLATIONS.sv[key] || key;

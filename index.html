@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#efede9" />
   <script>
-    document.documentElement.dataset.theme = localStorage.getItem("split-happens-theme") === "dark" ? "dark" : "light";
+    const savedTheme = localStorage.getItem("split-happens-theme") || "system";
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = savedTheme === "dark" || (savedTheme === "system" && prefersDark) ? "dark" : "light";
   </script>
   <title>Split Happens</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -213,6 +215,7 @@
         <div class="field">
           <span class="field-label" data-i18n="theme">Tema</span>
           <div class="seg" id="settings-theme">
+            <button type="button" data-theme="system" data-i18n="systemTheme">Automatiskt</button>
             <button type="button" data-theme="light" data-i18n="lightTheme">Ljust</button>
             <button type="button" data-theme="dark" data-i18n="darkTheme">Mörkt</button>
           </div>
@@ -224,6 +227,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=split-happens-30"></script>
+  <script type="module" src="app.js?v=split-happens-31"></script>
 </body>
 </html>
