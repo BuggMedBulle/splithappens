@@ -332,7 +332,7 @@ function renderBalance() {
   const creditor = PEOPLE[creditorKey];
   const owed = Math.abs(bal);
 
-  heading.textContent = kr(owed);
+  heading.textContent = kr(CURRENT_USER === debtorKey ? -owed : owed);
   heading.classList.add(CURRENT_USER === creditorKey ? "balance-positive" : "balance-negative");
   const owesVerb = t(debtorKey === CURRENT_USER ? "oweSelf" : "owesOther");
   sub.innerHTML = `<strong>${escapeHtml(subjectName(debtorKey))}</strong> ${owesVerb} ${escapeHtml(objectName(creditorKey))}`;
