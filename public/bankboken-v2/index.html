@@ -117,19 +117,6 @@
             </div>
           </div>
 
-          <label class="field">
-            <span class="field-label" data-i18n="amount">Belopp</span>
-            <div class="input-wrap">
-              <input id="e-amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0" required />
-              <span class="suffix" data-i18n="currencySuffix">kr</span>
-            </div>
-          </label>
-
-          <label class="field date-field">
-            <span class="field-label" data-i18n="date">Datum</span>
-            <input id="e-date" type="date" required />
-          </label>
-
           <div class="field receipt-field">
             <span class="field-label" data-i18n="receipt">Kvitto</span>
             <input id="e-receipt" class="receipt-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
@@ -152,6 +139,19 @@
             <p id="receipt-error" class="receipt-error" hidden></p>
             <p id="receipt-ocr-status" class="receipt-ocr-status" aria-live="polite" hidden></p>
           </div>
+
+          <label class="field">
+            <span class="field-label" data-i18n="amount">Belopp</span>
+            <div class="input-wrap">
+              <input id="e-amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0" required />
+              <span class="suffix" data-i18n="currencySuffix">kr</span>
+            </div>
+          </label>
+
+          <label class="field date-field">
+            <span class="field-label" data-i18n="date">Datum</span>
+            <input id="e-date" type="date" required />
+          </label>
 
           <div class="field">
             <span class="field-label" id="payer-label">Betalat av</span>
