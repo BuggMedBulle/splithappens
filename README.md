@@ -1,90 +1,28 @@
-# 📒 Bankboken
+# Split Happens
 
-A tiny shared expense tracker for two people (Helo & Halvis). Track who paid
-what, see the running balance, and settle up with one tap via **Swish**
-(deep link + QR).
+Split Happens lägger till riktiga användarkonton och flera separata delningar. Den befintliga Helo/Halvis-versionen i `bankboken/` påverkas inte.
 
-- Password lock on the start page
-- Real-time sync between phones via **Firebase Firestore**
-- Works offline on a single device (localStorage) until Firebase is configured
-- Static site — hosts free on **GitHub Pages**
+## Firebase-inställningar
 
-Everything you need to edit lives in **`config.js`**.
+1. Öppna Firebase Console och projektet `hh-bankboken`.
+2. Gå till **Authentication → Sign-in method** och aktivera **Email/Password**.
+3. Gå till **Firestore Database → Rules**.
+4. Ersätt reglerna med innehållet i `firestore.rules` och publicera dem.
 
----
+Reglerna låter tills vidare den gamla toppnivåsamlingen `entries` fungera som tidigare. Det gör att nuvarande Helo/Halvis-app fortsätter fungera under testperioden. När den datan har migrerats kan kompatibilitetsregeln tas bort.
 
-## 1. Set the people & Swish numbers
+## Så fungerar det
 
-In `config.js`:
+- Varje person skapar ett eget konto med namn, e-post, lösenord och Swishnummer.
+- Den första personen skapar en Bankbok och skickar dess inbjudningskod till den andra.
+- Den andra personen går med via koden.
+- Varje Bankbok kan ha högst två personer.
+- Utgifter ligger under `bankbooks/{bankbookId}/entries` och synkas i realtid endast mellan medlemmarna.
+- Kvittobilder komprimeras i webbläsaren och lagras separat under `bankbooks/{bankbookId}/receipts`.
+- Separat lagring gör att historiklistan förblir snabb och att bilden bara hämtas när ett utlägg öppnas.
+- Bara de två medlemmarna i delningen kan läsa, lägga till eller ta bort kvitton.
+- Lösningen fungerar på Firestores kostnadsfria Spark-nivå och kräver inte Firebase Storage.
 
-```js
-export const PEOPLE = {
-  A: { name: "Helo",   swish: "0700000000" },
-  B: { name: "Halvis", swish: "0700000001" },
-};
-```
+## Viktigt före produktionspublicering
 
-Use the real mobile numbers registered with each person's Swish.
-
-## 2. Set the password
-
-Current password is **`helohalvis`**. To change it, open any browser console and run:
-
-```js
-crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOURNEWPASS'))
-  .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-```
-
-Paste the printed hash into `PASSWORD_SHA256` in `config.js`.
-
-> ⚠️ This is a *simple* lock, not real security — anyone who reads the page
-> source can see the hash. The real protection is the Firestore rules below.
-
-## 3. Set up Firebase (for phone-to-phone sync)
-
-1. Create a free project at <https://console.firebase.google.com>.
-2. **Build → Firestore Database → Create database** (Production mode).
-3. **Project settings → Your apps → Web (`</>`)** → register an app → copy the
-   `firebaseConfig` object into `FIREBASE_CONFIG` in `config.js`.
-4. **Firestore → Rules** — paste this so only your app's collection is used:
-
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /entries/{doc} {
-         allow read, write: if true;   // gated by the app password
-       }
-     }
-   }
-   ```
-
-   > This lets anyone with the URL read/write the `entries` collection. That's
-   > fine for a private 2-person tracker behind an unguessable URL + password.
-   > For stronger protection, enable Firebase Anonymous Auth and change the rule
-   > to `if request.auth != null`.
-
-Until `FIREBASE_CONFIG` is filled in, the app quietly uses `localStorage`
-(single-device only) so you can try it immediately.
-
-## 4. Deploy to GitHub Pages
-
-```bash
-cd hepa-expenses
-git init && git add . && git commit -m "Helo & Halvis kassa"
-gh repo create hepa-expenses --public --source=. --push
-```
-
-Then in the repo: **Settings → Pages → Branch: `main` / root → Save**.
-Your app appears at `https://<user>.github.io/hepa-expenses/`.
-
-Add it to the home screen on both phones for an app-like experience.
-
----
-
-## How the balance works
-
-Each expense is either split **50 / 50** or paid **fully for the other person**.
-Settlements move the balance back toward zero. The balance card always shows
-who owes whom and how much — tap **Betala** to open Swish pre-filled, or let the
-other person scan the QR.
+Testa v2 på localhost med två olika konton, gärna i ett vanligt och ett privat webbläsarfönster. Publicera inte mappen som ersättning för nuvarande `bankboken/` förrän konton, regler, inbjudan och synk har verifierats.

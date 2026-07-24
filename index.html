@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#efede9" />
   <script>
     const savedTheme = localStorage.getItem("split-happens-theme") || "system";
@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=split-happens-27" />
+  <link rel="stylesheet" href="styles.css?v=split-happens-38" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -130,6 +130,26 @@
             <input id="e-date" type="date" required />
           </label>
 
+          <div class="field receipt-field">
+            <span class="field-label" data-i18n="receipt">Kvitto</span>
+            <input id="e-receipt" class="receipt-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+            <label for="e-receipt" class="receipt-picker">
+              <span class="receipt-picker-icon" aria-hidden="true">+</span>
+              <span data-i18n="addReceipt">Lägg till bild</span>
+            </label>
+            <div id="receipt-preview" class="receipt-preview" hidden>
+              <button id="receipt-open" class="receipt-open" type="button" aria-label="Öppna kvittot i full storlek" data-i18n-aria="openReceipt">
+                <img id="receipt-image" alt="Förhandsvisning av kvitto" data-i18n-alt="receiptPreview" />
+                <span class="receipt-zoom" aria-hidden="true">↗</span>
+              </button>
+              <div class="receipt-preview-actions">
+                <label for="e-receipt" class="receipt-change" data-i18n="changeReceipt">Byt bild</label>
+                <button id="receipt-remove" type="button" data-i18n="removeReceipt">Ta bort</button>
+              </div>
+            </div>
+            <p id="receipt-error" class="receipt-error" hidden></p>
+          </div>
+
           <div class="field">
             <span class="field-label" id="payer-label">Betalat av</span>
             <div class="seg" id="e-payer">
@@ -201,10 +221,16 @@
       <button id="settings-close" class="settings-close" type="button" aria-label="Stäng inställningar" data-i18n-aria="closeSettings"><img src="modal-close.svg" alt="" /></button>
       <h2 id="settings-title" data-i18n="settings">Inställningar</h2>
       <form id="settings-form">
-        <label class="field">
-          <span class="field-label" data-i18n="yourName">Ditt namn</span>
-          <input id="settings-name" type="text" maxlength="40" required />
-        </label>
+        <div class="settings-identity-row">
+          <div class="field settings-avatar-field">
+            <span class="field-label" data-i18n="avatar">Avatar</span>
+            <button id="settings-avatar-trigger" class="settings-avatar-trigger" type="button" aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Anpassa avatar" data-i18n-aria="customizeAvatar">J</button>
+          </div>
+          <label class="field settings-name-field">
+            <span class="field-label" data-i18n="yourName">Ditt namn</span>
+            <input id="settings-name" type="text" maxlength="40" required />
+          </label>
+        </div>
         <div class="field">
           <span class="field-label" data-i18n="language">Språk</span>
           <div class="seg" id="settings-language">
@@ -227,6 +253,62 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=split-happens-32"></script>
+  <div id="avatar-modal" class="edit-modal avatar-modal" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title" hidden>
+    <div class="edit-modal-card avatar-modal-card">
+      <div class="avatar-modal-head">
+        <button id="avatar-cancel" class="avatar-modal-text-action" type="button" data-i18n="cancel">Avbryt</button>
+        <h2 id="avatar-modal-title" data-i18n="chooseAvatar">Välj en avatar</h2>
+        <button id="avatar-confirm" class="avatar-modal-text-action avatar-confirm" type="button" data-i18n="choose">Välj</button>
+      </div>
+      <div id="avatar-modal-preview" class="avatar-modal-preview">J</div>
+      <div class="seg avatar-mode" id="settings-avatar-mode">
+        <button type="button" data-avatar-mode="letter" data-i18n="initial">Initial</button>
+        <button type="button" data-avatar-mode="emoji" data-i18n="emoji">Emoji</button>
+      </div>
+      <div id="settings-avatar-emoji-panel" class="settings-avatar-emoji-panel" hidden>
+        <div id="settings-emoji-grid" class="settings-emoji-grid" aria-label="Välj emoji" data-i18n-aria="chooseEmoji">
+          <button type="button" data-emoji="😀">😀</button>
+          <button type="button" data-emoji="😎">😎</button>
+          <button type="button" data-emoji="🥳">🥳</button>
+          <button type="button" data-emoji="🤓">🤓</button>
+          <button type="button" data-emoji="😍">😍</button>
+          <button type="button" data-emoji="🤠">🤠</button>
+          <button type="button" data-emoji="👻">👻</button>
+          <button type="button" data-emoji="👽">👽</button>
+          <button type="button" data-emoji="🤖">🤖</button>
+          <button type="button" data-emoji="🐵">🐵</button>
+          <button type="button" data-emoji="🦊">🦊</button>
+          <button type="button" data-emoji="🐸">🐸</button>
+          <button type="button" data-emoji="🐻">🐻</button>
+          <button type="button" data-emoji="🐱">🐱</button>
+          <button type="button" data-emoji="🐶">🐶</button>
+          <button type="button" data-emoji="🦦">🦦</button>
+          <button type="button" data-emoji="🌈">🌈</button>
+          <button type="button" data-emoji="✨">✨</button>
+        </div>
+        <input id="settings-avatar-emoji" class="settings-avatar-emoji" type="text" maxlength="16" placeholder="Annan emoji…" data-i18n-placeholder="customEmoji" aria-label="Valfri emoji" data-i18n-aria="optionalEmoji" />
+      </div>
+      <div class="avatar-color-field">
+        <span class="field-label" data-i18n="profileColor">Avatarfärg</span>
+        <div id="settings-color" class="profile-colors" role="radiogroup">
+          <button type="button" role="radio" data-color="#ef5b5b" style="--choice-color:#ef5b5b" aria-label="Röd"></button>
+          <button type="button" role="radio" data-color="#f28c45" style="--choice-color:#f28c45" aria-label="Orange"></button>
+          <button type="button" role="radio" data-color="#e6c84f" style="--choice-color:#e6c84f" aria-label="Gul"></button>
+          <button type="button" role="radio" data-color="#62b86b" style="--choice-color:#62b86b" aria-label="Grön"></button>
+          <button type="button" role="radio" data-color="#5c8de8" style="--choice-color:#5c8de8" aria-label="Blå"></button>
+          <button type="button" role="radio" data-color="#9a6dd7" style="--choice-color:#9a6dd7" aria-label="Lila"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="receipt-lightbox" class="receipt-lightbox" role="dialog" aria-modal="true" aria-label="Kvitto" data-i18n-aria="receipt" hidden>
+    <button id="receipt-lightbox-close" class="receipt-lightbox-close" type="button" aria-label="Stäng kvitto" data-i18n-aria="closeReceipt">
+      <img src="modal-close.svg" alt="" />
+    </button>
+    <img id="receipt-lightbox-image" alt="Kvitto i full storlek" data-i18n-alt="receiptFullSize" />
+  </div>
+
+  <script type="module" src="app.js?v=split-happens-42"></script>
 </body>
 </html>
