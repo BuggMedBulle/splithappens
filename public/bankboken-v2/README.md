@@ -18,6 +18,10 @@ Reglerna låter tills vidare den gamla toppnivåsamlingen `entries` fungera som 
 - Den andra personen går med via koden.
 - Varje Bankbok kan ha högst två personer.
 - Utgifter ligger under `bankbooks/{bankbookId}/entries` och synkas i realtid endast mellan medlemmarna.
+- Kvittobilder komprimeras i webbläsaren och lagras separat under `bankbooks/{bankbookId}/receipts`.
+- Separat lagring gör att historiklistan förblir snabb och att bilden bara hämtas när ett utlägg öppnas.
+- Bara de två medlemmarna i delningen kan läsa, lägga till eller ta bort kvitton.
+- Lösningen fungerar på Firestores kostnadsfria Spark-nivå och kräver inte Firebase Storage.
 
 ## Viktigt före produktionspublicering
 

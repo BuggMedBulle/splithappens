@@ -38,6 +38,13 @@ service cloud.firestore {
       match /entries/{entryId} {
         allow read, create, update, delete: if isMember(bankbookId);
       }
+
+      match /receipts/{entryId} {
+        allow read, delete: if isMember(bankbookId);
+        allow create, update: if isMember(bankbookId)
+          && request.resource.data.imageData is string
+          && request.resource.data.imageData.size() < 850000;
+      }
     }
 
     match /entries/{entryId} {

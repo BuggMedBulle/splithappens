@@ -27,7 +27,7 @@ const TRANSLATIONS = {
     closeSettings: "Stäng inställningar", balance: "Saldo", markPaid: "Markera som swishat", add: "Lägg till",
     expense: "Utgift", income: "Inkomst", description: "Beskrivning", descriptionExample: "t.ex. Matvaror ICA",
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
-    language: "Språk", theme: "Tema", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
+    language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
     editIncome: "Redigera inkomst", editExpense: "Redigera utgift", save: "Spara ändringar",
     allEven: "Allt är jämnt. Ingen är skyldig något.", oweSelf: "är skyldig", owesOther: "är skyldig", total: "Totalt",
@@ -48,6 +48,10 @@ const TRANSLATIONS = {
     groceries: "Mat", meal: "Lunch eller middag", cinema: "Bio", snacks: "Snacks eller godis",
     alcohol: "Alkohol", travel: "Resa", taxi: "Taxi", liveSport: "Live-sport", fuel: "Bensin",
     shopping: "Shopping", experiences: "Upplevelser eller utflykter",
+    receipt: "Kvitto", addReceipt: "Lägg till bild", changeReceipt: "Byt bild", removeReceipt: "Ta bort",
+    receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
+    receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
+    openReceipt: "Öppna kvittot i full storlek", closeReceipt: "Stäng kvitto", receiptFullSize: "Kvitto i full storlek",
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
@@ -59,7 +63,7 @@ const TRANSLATIONS = {
     closeSettings: "Close settings", balance: "Balance", markPaid: "Mark as paid", add: "Add",
     expense: "Expense", income: "Income", description: "Description", descriptionExample: "e.g. Groceries",
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
-    language: "Language", theme: "Theme", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
+    language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
     editIncome: "Edit income", editExpense: "Edit expense", save: "Save changes",
     allEven: "Everything is settled. No one owes anything.", oweSelf: "owe", owesOther: "owes", total: "Total",
@@ -80,6 +84,10 @@ const TRANSLATIONS = {
     groceries: "Groceries", meal: "Lunch or dinner", cinema: "Cinema", snacks: "Snacks or candy",
     alcohol: "Alcohol", travel: "Travel", taxi: "Taxi", liveSport: "Live sports", fuel: "Fuel",
     shopping: "Shopping", experiences: "Experiences or excursions",
+    receipt: "Receipt", addReceipt: "Add image", changeReceipt: "Change image", removeReceipt: "Remove",
+    receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
+    receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
+    openReceipt: "Open receipt full size", closeReceipt: "Close receipt", receiptFullSize: "Receipt in full size",
   },
 };
 const requestedLanguage = new URL(window.location.href).searchParams.get("lang");
@@ -92,6 +100,77 @@ if (requestedLanguage === "en" || requestedLanguage === "sv") {
 const savedTheme = localStorage.getItem("split-happens-theme");
 let THEME = ["system", "light", "dark"].includes(savedTheme) ? savedTheme : "system";
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+const PROFILE_COLORS = ["#ef5b5b", "#f28c45", "#e6c84f", "#62b86b", "#5c8de8", "#9a6dd7"];
+let SETTINGS_COLOR = PROFILE_COLORS[0];
+let SETTINGS_AVATAR_MODE = "letter";
+let SETTINGS_AVATAR_EMOJI = "";
+let AVATAR_MODAL_ORIGINAL = null;
+
+function validProfileColor(color) {
+  return PROFILE_COLORS.includes(String(color || "").toLowerCase());
+}
+
+function defaultProfileColor(seed = "") {
+  const total = [...seed].reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  return PROFILE_COLORS[total % PROFILE_COLORS.length];
+}
+
+function personColor(personKey) {
+  const color = PEOPLE[personKey]?.color;
+  return validProfileColor(color) ? color : PROFILE_COLORS[personKey === "B" ? 1 : 0];
+}
+
+function firstGrapheme(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (Intl.Segmenter) return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)][0]?.segment || "";
+  return Array.from(text)[0] || "";
+}
+
+function profileAvatar(profile, fallbackName = "") {
+  if (profile?.avatarMode === "emoji" && profile.avatarEmoji) return firstGrapheme(profile.avatarEmoji);
+  return firstGrapheme(profile?.name || fallbackName).toLocaleUpperCase(locale());
+}
+
+function personAvatar(personKey) {
+  return profileAvatar(PEOPLE[personKey], subjectName(personKey)) || "?";
+}
+
+function historyAvatar(personKey) {
+  const emojiClass = PEOPLE[personKey]?.avatarMode === "emoji" ? " avatar-emoji" : "";
+  return `<i class="history-person-avatar${emojiClass}" style="--profile-color:${personColor(personKey)}">${escapeHtml(personAvatar(personKey))}</i>`;
+}
+
+function updateAvatarSettings() {
+  const name = document.getElementById("settings-name").value.trim();
+  const emojiInput = document.getElementById("settings-avatar-emoji");
+  const avatar = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI
+    ? firstGrapheme(SETTINGS_AVATAR_EMOJI)
+    : firstGrapheme(name).toLocaleUpperCase(locale()) || "?";
+  const trigger = document.getElementById("settings-avatar-trigger");
+  trigger.textContent = avatar;
+  trigger.style.setProperty("--profile-color", SETTINGS_COLOR);
+  trigger.classList.toggle("avatar-emoji", SETTINGS_AVATAR_MODE === "emoji" && Boolean(SETTINGS_AVATAR_EMOJI));
+  const modalPreview = document.getElementById("avatar-modal-preview");
+  modalPreview.textContent = avatar;
+  modalPreview.style.setProperty("--profile-color", SETTINGS_COLOR);
+  modalPreview.classList.toggle("avatar-emoji", SETTINGS_AVATAR_MODE === "emoji" && Boolean(SETTINGS_AVATAR_EMOJI));
+  document.getElementById("settings-avatar-emoji-panel").hidden = SETTINGS_AVATAR_MODE !== "emoji";
+  emojiInput.value = SETTINGS_AVATAR_EMOJI;
+  document.querySelectorAll("#settings-emoji-grid button").forEach((button) =>
+    button.classList.toggle("active", button.dataset.emoji === SETTINGS_AVATAR_EMOJI));
+  document.querySelectorAll("#settings-avatar-mode button").forEach((button) =>
+    button.classList.toggle("active", button.dataset.avatarMode === SETTINGS_AVATAR_MODE));
+}
+
+function updateColorPicker() {
+  document.querySelectorAll("#settings-color button").forEach((button) => {
+    const active = button.dataset.color === SETTINGS_COLOR;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-checked", String(active));
+  });
+  updateAvatarSettings();
+}
 
 function applyTheme() {
   const effectiveTheme = THEME === "system" ? (systemTheme.matches ? "dark" : "light") : THEME;
@@ -114,6 +193,7 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => { element.placeholder = t(element.dataset.i18nPlaceholder); });
   document.querySelectorAll("[data-i18n-title]").forEach((element) => { element.title = t(element.dataset.i18nTitle); });
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => { element.setAttribute("aria-label", t(element.dataset.i18nAria)); });
+  document.querySelectorAll("[data-i18n-alt]").forEach((element) => { element.alt = t(element.dataset.i18nAlt); });
   document.querySelectorAll("#settings-language button").forEach((button) =>
     button.classList.toggle("active", button.dataset.language === LANGUAGE));
   applyTheme();
@@ -134,15 +214,34 @@ let store; // { subscribe(cb), add(entry), update(id, entry), remove(id) }
 
 async function initStore() {
   const col = fs.collection(db, "bankbooks", activeBankbook.id, "entries");
+  const receipts = fs.collection(db, "bankbooks", activeBankbook.id, "receipts");
   store = {
     subscribe(cb) {
       const q = fs.query(col, fs.orderBy("ts", "desc"));
       return fs.onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
         (err) => { console.error(err); setSync(false, t("syncFailed")); });
     },
-    async add(entry) { await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid }); },
+    async add(entry) {
+      const documentRef = await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid });
+      return documentRef.id;
+    },
     async update(id, entry) { await fs.updateDoc(fs.doc(col, id), { ...entry, updatedBy: signedInUser.uid }); },
-    async remove(id) { await fs.deleteDoc(fs.doc(col, id)); },
+    async remove(id) {
+      await fs.deleteDoc(fs.doc(receipts, id));
+      await fs.deleteDoc(fs.doc(col, id));
+    },
+    async getReceipt(id) {
+      const snapshot = await fs.getDoc(fs.doc(receipts, id));
+      return snapshot.exists() ? snapshot.data().imageData || "" : "";
+    },
+    async saveReceipt(id, imageData) {
+      await fs.setDoc(fs.doc(receipts, id), {
+        imageData,
+        updatedBy: signedInUser.uid,
+        updatedAt: Date.now(),
+      });
+    },
+    async removeReceipt(id) { await fs.deleteDoc(fs.doc(receipts, id)); },
   };
   setSync(true, t("synced"));
 }
@@ -371,8 +470,8 @@ function renderHistory() {
     const leftKey = CURRENT_USER;
     const rightKey = otherPersonKey();
     totals.innerHTML = `
-      <button type="button" data-filter="${leftKey}" class="${HISTORY_FILTER === leftKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === leftKey}">${subjectName(leftKey)}<b>${kr0(amounts[leftKey])}</b></button>
-      <button type="button" data-filter="${rightKey}" class="${HISTORY_FILTER === rightKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === rightKey}">${subjectName(rightKey)}<b>${kr0(amounts[rightKey])}</b></button>
+      <button type="button" data-filter="${leftKey}" class="${HISTORY_FILTER === leftKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === leftKey}"><span class="total-label"><i class="profile-dot" style="--profile-color:${personColor(leftKey)}"></i>${subjectName(leftKey)}</span><b>${kr0(amounts[leftKey])}</b></button>
+      <button type="button" data-filter="${rightKey}" class="${HISTORY_FILTER === rightKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === rightKey}"><span class="total-label"><i class="profile-dot" style="--profile-color:${personColor(rightKey)}"></i>${subjectName(rightKey)}</span><b>${kr0(amounts[rightKey])}</b></button>
       <button type="button" data-filter="all">${t("total")}<b>${kr0(amounts.A + amounts.B)}</b></button>`;
   }
 
@@ -396,7 +495,6 @@ function renderHistory() {
   let renderedDate = null;
   for (const e of pageEntries) {
     const li = document.createElement("li");
-    const who = PEOPLE[e.payer] ? subjectName(e.payer) : e.payer;
     const date = new Date(e.ts).toLocaleDateString(locale(), { day: "numeric", month: "long" });
 
     if (date !== renderedDate) {
@@ -415,7 +513,7 @@ function renderHistory() {
         <div class="h-ico">💸</div>
         <div class="h-main">
           <div class="h-title">${t("settlement")}</div>
-          <div class="h-sub">${who} ${t("paid")} ${to}</div>
+          <div class="h-sub">${historyAvatar(e.payer)}<span>→ ${to}</span></div>
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
     } else if (e.type === "income") {
@@ -424,20 +522,20 @@ function renderHistory() {
         <div class="h-ico">${e.icon || "💰"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${who} ${t("received")} · ${splitLabel(e)}</div>
+          <div class="h-sub">${historyAvatar(e.payer)}<span>${t("received")} · ${splitLabel(e)}</span></div>
         </div>
         <div class="h-amt">+${kr(e.amount)}</div>`;
     } else {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
       const historyCopy = Math.abs(payerShare - e.amount) < 0.01
-        ? `${who} ${t("treated", { recipient: objectName(otherPersonKey(e.payer)) })}`
-        : `${who} ${t("paid")} · ${splitLabel(e)}`;
+        ? t("treated", { recipient: objectName(otherPersonKey(e.payer)) })
+        : splitLabel(e);
       li.innerHTML = `
         <div class="h-ico">${e.icon || "🧾"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${historyCopy}</div>
+          <div class="h-sub">${historyAvatar(e.payer)}<span>${historyCopy}</span></div>
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
     }
@@ -519,6 +617,11 @@ function setActive(segId, val, key = "val") {
 
 let getEntryType, getPayer, getSplit;
 let EDITING_ID = null;
+let EDITING_ORIGINAL = null;
+let EDITING_HAS_RECEIPT = false;
+let pendingReceiptData = "";
+let pendingReceiptUrl = "";
+let removeExistingReceipt = false;
 
 // ---- category icon popup ----
 const ICON_DEFAULT = "🧾"; // receipt is the default category
@@ -532,6 +635,7 @@ function setIcon(icon) {
   document.getElementById("icon-trigger").textContent = icon;
   document.querySelectorAll("#icon-pop button").forEach((b) =>
     b.classList.toggle("active", b.dataset.icon === icon));
+  updateEditingDirtyState();
 }
 
 function closeIconPop() {
@@ -582,6 +686,14 @@ function updatePersonLabels() {
   const rightPayerButton = payer.querySelector(`[data-val="${rightKey}"]`);
   leftPayerButton.textContent = t("payerYou");
   rightPayerButton.textContent = subjectName(rightKey);
+  leftPayerButton.classList.add("person-option");
+  rightPayerButton.classList.add("person-option");
+  leftPayerButton.style.setProperty("--profile-color", personColor(leftKey));
+  rightPayerButton.style.setProperty("--profile-color", personColor(rightKey));
+  leftPayerButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(leftKey)));
+  rightPayerButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(rightKey)));
+  leftPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[leftKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
+  rightPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[rightKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
   payer.append(leftPayerButton, rightPayerButton);
 
   const presets = document.querySelector("#e-split .split-presets");
@@ -592,6 +704,14 @@ function updatePersonLabels() {
   const rightSplitButton = presets.querySelector(`[data-val="${rightSplit}"]`);
   leftSplitButton.textContent = subjectName(leftKey);
   rightSplitButton.textContent = subjectName(rightKey);
+  leftSplitButton.classList.add("person-option");
+  rightSplitButton.classList.add("person-option");
+  leftSplitButton.style.setProperty("--profile-color", personColor(leftKey));
+  rightSplitButton.style.setProperty("--profile-color", personColor(rightKey));
+  leftSplitButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(leftKey)));
+  rightSplitButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(rightKey)));
+  leftSplitButton.style.setProperty("--profile-avatar-size", PEOPLE[leftKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
+  rightSplitButton.style.setProperty("--profile-avatar-size", PEOPLE[rightKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
   presets.append(leftSplitButton, evenButton, rightSplitButton);
   updateCustomSplitLabels();
 }
@@ -662,11 +782,108 @@ function dateInputValue(timestamp) {
   return `${year}-${month}-${day}`;
 }
 
+function editingFormState() {
+  if (!EDITING_ID || !getEntryType || !getPayer || !getSplit) return null;
+  return JSON.stringify({
+    type: getEntryType(),
+    description: document.getElementById("e-desc").value.trim(),
+    amount: document.getElementById("e-amount").value,
+    date: document.getElementById("e-date").value,
+    payer: getPayer(),
+    split: getSplit(),
+    customShare: document.getElementById("e-custom-share").value,
+    icon: getIcon(),
+    receiptAction: pendingReceiptData ? "replace" : (removeExistingReceipt ? "remove" : "keep"),
+  });
+}
+
+function updateEditingDirtyState() {
+  const submit = document.querySelector("#expense-form button[type='submit']");
+  if (!submit) return;
+  submit.disabled = Boolean(EDITING_ID) && (!EDITING_ORIGINAL || editingFormState() === EDITING_ORIGINAL);
+}
+
+function clearPendingReceiptUrl() {
+  if (pendingReceiptUrl.startsWith("blob:")) URL.revokeObjectURL(pendingReceiptUrl);
+  pendingReceiptUrl = "";
+}
+
+function showReceiptError(message = "") {
+  const error = document.getElementById("receipt-error");
+  error.textContent = message;
+  error.hidden = !message;
+}
+
+function renderReceiptPreview(url = "") {
+  const preview = document.getElementById("receipt-preview");
+  const picker = document.querySelector(".receipt-picker");
+  const image = document.getElementById("receipt-image");
+  preview.hidden = !url;
+  picker.hidden = Boolean(url);
+  image.removeAttribute("src");
+  if (url) image.src = url;
+}
+
+function openReceiptLightbox() {
+  const source = document.getElementById("receipt-image").src;
+  if (!source) return;
+  document.getElementById("receipt-lightbox-image").src = source;
+  document.getElementById("receipt-lightbox").hidden = false;
+  document.getElementById("receipt-lightbox-close").focus();
+}
+
+function closeReceiptLightbox() {
+  document.getElementById("receipt-lightbox").hidden = true;
+  document.getElementById("receipt-lightbox-image").removeAttribute("src");
+  document.getElementById("receipt-open").focus();
+}
+
+async function imageFromFile(file) {
+  if ("createImageBitmap" in window) return createImageBitmap(file);
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function canvasDataUrl(canvas, quality) {
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+async function compressReceipt(file) {
+  if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
+    throw new Error(file.size > 15 * 1024 * 1024 ? "too-large" : "invalid");
+  }
+  const image = await imageFromFile(file);
+  const maxSide = 1400;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close?.();
+  let quality = 0.78;
+  let imageData = canvasDataUrl(canvas, quality);
+  while (imageData.length > 720000 && quality > 0.42) {
+    quality -= 0.08;
+    imageData = canvasDataUrl(canvas, quality);
+  }
+  if (imageData.length > 850000) throw new Error("too-large");
+  return imageData;
+}
+
 function resetExpenseForm() {
   const form = document.getElementById("expense-form");
   document.getElementById("expense-form-home").appendChild(form);
   document.getElementById("edit-modal").hidden = true;
   EDITING_ID = null;
+  EDITING_ORIGINAL = null;
+  EDITING_HAS_RECEIPT = false;
   form.reset();
   setActive("e-type", "expense");
   document.getElementById("e-date").value = todayInputValue();
@@ -679,17 +896,27 @@ function resetExpenseForm() {
   document.getElementById("submit-label").textContent = t("addExpense");
   document.getElementById("edit-cancel").hidden = true;
   document.getElementById("edit-delete").hidden = true;
+  document.getElementById("e-receipt").value = "";
+  pendingReceiptData = "";
+  removeExistingReceipt = false;
+  clearPendingReceiptUrl();
+  renderReceiptPreview();
+  showReceiptError();
   updateCustomSplitLabels();
   setIcon(ICON_DEFAULT);
   closeIconPop();
   updatePreview();
   onEntryTypeChange("expense");
+  updateEditingDirtyState();
 }
 
-function startEditing(entry) {
+async function startEditing(entry) {
   EDITING_ID = entry.id;
+  EDITING_ORIGINAL = null;
+  EDITING_HAS_RECEIPT = Boolean(entry.hasReceipt);
   document.getElementById("edit-form-modal").appendChild(document.getElementById("expense-form"));
   document.getElementById("edit-modal").hidden = false;
+  updateEditingDirtyState();
   document.getElementById("e-desc").value = entry.desc;
   document.getElementById("e-amount").value = entry.amount;
   document.getElementById("e-date").value = dateInputValue(entry.ts);
@@ -700,6 +927,11 @@ function startEditing(entry) {
     ? String(Math.round((CURRENT_USER === "A" ? 1 - entry.shareA : entry.shareA) * 100))
     : "50";
   document.getElementById("custom-split").hidden = entry.split !== "custom";
+  pendingReceiptData = "";
+  removeExistingReceipt = false;
+  clearPendingReceiptUrl();
+  renderReceiptPreview();
+  showReceiptError();
   setIcon(entry.icon || ICON_DEFAULT);
   document.getElementById("submit-icon").textContent = "✓";
   document.getElementById("submit-label").textContent = t("save");
@@ -708,7 +940,20 @@ function startEditing(entry) {
   updateCustomSplitLabels();
   updatePreview();
   onEntryTypeChange(entry.type === "income" ? "income" : "expense");
-  document.getElementById("e-desc").focus();
+  EDITING_ORIGINAL = editingFormState();
+  updateEditingDirtyState();
+  if (entry.hasReceipt) {
+    const receiptEntryId = entry.id;
+    try {
+      const imageData = await store.getReceipt(entry.id);
+      if (EDITING_ID === receiptEntryId && !pendingReceiptData && !removeExistingReceipt) {
+        renderReceiptPreview(imageData);
+      }
+    } catch (error) {
+      console.error(error);
+      showReceiptError(t("receiptInvalid"));
+    }
+  }
 }
 
 function updatePreview() {
@@ -739,19 +984,67 @@ function updatePreview() {
 }
 
 function initApp() {
-  getEntryType = initSegments("e-type", onEntryTypeChange);
-  getPayer = initSegments("e-payer", updatePreview);
-  getSplit = initSegments("e-split", onSplitChange);
+  getEntryType = initSegments("e-type", (value) => {
+    onEntryTypeChange(value);
+    updateEditingDirtyState();
+  });
+  getPayer = initSegments("e-payer", () => {
+    updatePreview();
+    updateEditingDirtyState();
+  });
+  getSplit = initSegments("e-split", (value) => {
+    onSplitChange(value);
+    updateEditingDirtyState();
+  });
   initIconPicker();
 
   const dateInput = document.getElementById("e-date");
   dateInput.value = todayInputValue();
-  dateInput.addEventListener("change", () => dateInput.blur());
+  dateInput.addEventListener("change", () => {
+    dateInput.blur();
+    updateEditingDirtyState();
+  });
+  document.getElementById("expense-form").addEventListener("input", updateEditingDirtyState);
+
+  document.getElementById("e-receipt").addEventListener("change", async (event) => {
+    const [file] = event.target.files;
+    if (!file) return;
+    showReceiptError();
+    try {
+      const imageData = await compressReceipt(file);
+      clearPendingReceiptUrl();
+      pendingReceiptData = imageData;
+      pendingReceiptUrl = imageData;
+      removeExistingReceipt = false;
+      renderReceiptPreview(pendingReceiptUrl);
+      updateEditingDirtyState();
+    } catch (error) {
+      event.target.value = "";
+      showReceiptError(t(error.message === "too-large" ? "receiptTooLarge" : "receiptInvalid"));
+    }
+  });
+
+  document.getElementById("receipt-remove").addEventListener("click", () => {
+    document.getElementById("e-receipt").value = "";
+    pendingReceiptData = "";
+    removeExistingReceipt = Boolean(EDITING_ID && EDITING_HAS_RECEIPT);
+    clearPendingReceiptUrl();
+    renderReceiptPreview();
+    showReceiptError();
+    updateEditingDirtyState();
+  });
+
+  document.getElementById("receipt-open").addEventListener("click", openReceiptLightbox);
+  document.getElementById("receipt-lightbox-close").addEventListener("click", closeReceiptLightbox);
+  document.getElementById("receipt-lightbox").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) closeReceiptLightbox();
+  });
 
   document.getElementById("e-amount").addEventListener("input", updatePreview);
   document.getElementById("e-custom-share").addEventListener("input", () => {
     updateCustomSplitLabels();
     updatePreview();
+    updateEditingDirtyState();
   });
 
   // Config-driven labels
@@ -773,10 +1066,39 @@ function initApp() {
       shareA: split === "custom" ? customShareA() : null,
       ts: expenseTimestamp(date, existingEntry?.ts),
     };
-    if (EDITING_ID) await store.update(EDITING_ID, expense);
-    else await store.add(expense);
-    resetExpenseForm();
-    document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    const submitButton = ev.submitter;
+    submitButton.disabled = true;
+    showReceiptError();
+    let createdEntryId = "";
+    try {
+      const entryId = EDITING_ID || await store.add(expense);
+      if (!EDITING_ID) createdEntryId = entryId;
+      let hasReceipt = Boolean(existingEntry?.hasReceipt);
+      if (pendingReceiptData) {
+        await store.saveReceipt(entryId, pendingReceiptData);
+        hasReceipt = true;
+      } else if (removeExistingReceipt) {
+        await store.removeReceipt(entryId);
+        hasReceipt = false;
+      }
+      if (EDITING_ID || pendingReceiptData || removeExistingReceipt) {
+        await store.update(entryId, { ...expense, hasReceipt });
+      }
+      resetExpenseForm();
+      document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (error) {
+      console.error(error);
+      if (createdEntryId) {
+        try {
+          await store.remove(createdEntryId);
+        } catch (cleanupError) {
+          console.error(cleanupError);
+        }
+      }
+      showReceiptError(t("receiptUploadFailed"));
+    } finally {
+      submitButton.disabled = false;
+    }
   });
 
   document.getElementById("edit-cancel").addEventListener("click", resetExpenseForm);
@@ -791,6 +1113,10 @@ function initApp() {
     if (event.target === event.currentTarget) resetExpenseForm();
   });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !document.getElementById("receipt-lightbox").hidden) {
+      closeReceiptLightbox();
+      return;
+    }
     if (event.key === "Escape" && !document.getElementById("edit-modal").hidden) resetExpenseForm();
   });
 
@@ -948,7 +1274,14 @@ async function createAutomaticBankbook() {
     createdBy: signedInUser.uid,
     memberIds: [signedInUser.uid],
     members: {
-      [signedInUser.uid]: { name: userProfile.name, swish: userProfile.swish, slot: "A" },
+      [signedInUser.uid]: {
+        name: userProfile.name,
+        swish: userProfile.swish,
+        color: userProfile.color || defaultProfileColor(signedInUser.uid),
+        avatarMode: userProfile.avatarMode || "letter",
+        avatarEmoji: userProfile.avatarEmoji || "",
+        slot: "A",
+      },
     },
     createdAt: fs.serverTimestamp(),
   };
@@ -962,7 +1295,20 @@ function peopleFromBankbook(bankbook) {
   const personB = profiles.find(([, profile]) => profile.slot === "B");
   if (!personA || !personB) return null;
   return {
-    people: { A: personA[1], B: personB[1] },
+    people: {
+      A: {
+        ...personA[1],
+        color: validProfileColor(personA[1].color) ? personA[1].color : PROFILE_COLORS[0],
+        avatarMode: personA[1].avatarMode === "emoji" ? "emoji" : "letter",
+        avatarEmoji: personA[1].avatarEmoji || "",
+      },
+      B: {
+        ...personB[1],
+        color: validProfileColor(personB[1].color) ? personB[1].color : PROFILE_COLORS[1],
+        avatarMode: personB[1].avatarMode === "emoji" ? "emoji" : "letter",
+        avatarEmoji: personB[1].avatarEmoji || "",
+      },
+    },
     currentSlot: personA[0] === signedInUser.uid ? "A" : "B",
   };
 }
@@ -1082,6 +1428,9 @@ document.getElementById("auth-form").addEventListener("submit", async (event) =>
       const profile = {
         name: document.getElementById("auth-name").value.trim(),
         swish: normalizeSwish(document.getElementById("auth-swish").value),
+        color: defaultProfileColor(credential.user.uid),
+        avatarMode: "letter",
+        avatarEmoji: "",
         email,
         createdAt: fs.serverTimestamp(),
       };
@@ -1112,7 +1461,14 @@ async function joinBankbook(code) {
         memberIds: [...bankbook.memberIds, signedInUser.uid],
         members: {
           ...bankbook.members,
-          [signedInUser.uid]: { name: userProfile.name, swish: userProfile.swish, slot: "B" },
+          [signedInUser.uid]: {
+            name: userProfile.name,
+            swish: userProfile.swish,
+            color: userProfile.color || defaultProfileColor(signedInUser.uid),
+            avatarMode: userProfile.avatarMode || "letter",
+            avatarEmoji: userProfile.avatarEmoji || "",
+            slot: "B",
+          },
         },
       });
     });
@@ -1145,13 +1501,80 @@ document.getElementById("share-invite").addEventListener("click", async () => {
 
 function closeSettings() {
   document.getElementById("settings-modal").hidden = true;
+  document.getElementById("avatar-modal").hidden = true;
   document.getElementById("settings-error").hidden = true;
+}
+
+function showSettingsFromAvatar() {
+  document.getElementById("avatar-modal").hidden = true;
+  document.getElementById("settings-modal").hidden = false;
+  updateAvatarSettings();
+  document.getElementById("settings-avatar-trigger").focus();
+}
+
+function cancelAvatarSelection() {
+  if (AVATAR_MODAL_ORIGINAL) {
+    SETTINGS_COLOR = AVATAR_MODAL_ORIGINAL.color;
+    SETTINGS_AVATAR_MODE = AVATAR_MODAL_ORIGINAL.mode;
+    SETTINGS_AVATAR_EMOJI = AVATAR_MODAL_ORIGINAL.emoji;
+  }
+  AVATAR_MODAL_ORIGINAL = null;
+  updateColorPicker();
+  showSettingsFromAvatar();
 }
 
 document.getElementById("settings-trigger").addEventListener("click", () => {
   document.getElementById("settings-name").value = userProfile.name;
+  SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : personColor(CURRENT_USER);
+  SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
+  SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
+  updateColorPicker();
   document.getElementById("settings-error").hidden = true;
   document.getElementById("settings-modal").hidden = false;
+});
+
+document.getElementById("settings-name").addEventListener("input", updateAvatarSettings);
+document.getElementById("settings-avatar-trigger").addEventListener("click", () => {
+  AVATAR_MODAL_ORIGINAL = {
+    color: SETTINGS_COLOR,
+    mode: SETTINGS_AVATAR_MODE,
+    emoji: SETTINGS_AVATAR_EMOJI,
+  };
+  document.getElementById("settings-modal").hidden = true;
+  document.getElementById("avatar-modal").hidden = false;
+  updateColorPicker();
+});
+document.getElementById("avatar-cancel").addEventListener("click", cancelAvatarSelection);
+document.getElementById("avatar-confirm").addEventListener("click", () => {
+  AVATAR_MODAL_ORIGINAL = null;
+  showSettingsFromAvatar();
+});
+document.getElementById("avatar-modal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) cancelAvatarSelection();
+});
+document.getElementById("settings-avatar-mode").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-avatar-mode]");
+  if (!button) return;
+  SETTINGS_AVATAR_MODE = button.dataset.avatarMode;
+  updateAvatarSettings();
+  if (SETTINGS_AVATAR_MODE === "emoji") document.getElementById("settings-avatar-emoji").focus();
+});
+document.getElementById("settings-avatar-emoji").addEventListener("input", (event) => {
+  SETTINGS_AVATAR_EMOJI = firstGrapheme(event.target.value);
+  updateAvatarSettings();
+});
+document.getElementById("settings-emoji-grid").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-emoji]");
+  if (!button) return;
+  SETTINGS_AVATAR_EMOJI = button.dataset.emoji;
+  updateAvatarSettings();
+});
+
+document.getElementById("settings-color").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-color]");
+  if (!button) return;
+  SETTINGS_COLOR = button.dataset.color;
+  updateColorPicker();
 });
 
 document.getElementById("settings-language").addEventListener("click", (event) => {
@@ -1174,6 +1597,10 @@ document.getElementById("settings-modal").addEventListener("click", (event) => {
   if (event.target === event.currentTarget) closeSettings();
 });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("avatar-modal").hidden) {
+    cancelAvatarSelection();
+    return;
+  }
   if (event.key === "Escape" && !document.getElementById("settings-modal").hidden) closeSettings();
 });
 document.getElementById("settings-logout").addEventListener("click", () => authApi.signOut(auth));
@@ -1182,17 +1609,36 @@ document.getElementById("settings-form").addEventListener("submit", async (event
   const name = document.getElementById("settings-name").value.trim();
   if (!name || !activeBankbook) return;
   try {
+    const avatarMode = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI ? "emoji" : "letter";
+    const avatarEmoji = avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "";
     const members = {
       ...activeBankbook.members,
-      [signedInUser.uid]: { ...activeBankbook.members[signedInUser.uid], name },
+      [signedInUser.uid]: {
+        ...activeBankbook.members[signedInUser.uid],
+        name,
+        color: SETTINGS_COLOR,
+        avatarMode,
+        avatarEmoji,
+      },
     };
     const batch = fs.writeBatch(db);
-    batch.update(fs.doc(db, "users", signedInUser.uid), { name });
+    batch.update(fs.doc(db, "users", signedInUser.uid), {
+      name,
+      color: SETTINGS_COLOR,
+      avatarMode,
+      avatarEmoji,
+    });
     batch.update(fs.doc(db, "bankbooks", activeBankbook.id), { members });
     await batch.commit();
-    userProfile = { ...userProfile, name };
+    userProfile = { ...userProfile, name, color: SETTINGS_COLOR, avatarMode, avatarEmoji };
     activeBankbook = { ...activeBankbook, members };
-    PEOPLE[CURRENT_USER] = { ...PEOPLE[CURRENT_USER], name };
+    PEOPLE[CURRENT_USER] = {
+      ...PEOPLE[CURRENT_USER],
+      name,
+      color: SETTINGS_COLOR,
+      avatarMode,
+      avatarEmoji,
+    };
     updatePersonLabels();
     updatePreview();
     render();
