@@ -52,6 +52,8 @@ const TRANSLATIONS = {
     receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
     receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
     openReceipt: "Öppna kvittot i full storlek", closeReceipt: "Stäng kvitto", receiptFullSize: "Kvitto i full storlek", receiptZoomHint: "Nyp för att zooma · dra för att flytta",
+    receiptReadingAmount: "Läser av beloppet…", receiptAmountFound: "Förslag: {amount} har fyllts i.",
+    receiptAmountMissing: "Kunde inte hitta ett tydligt totalbelopp.", receiptAmountFailed: "Beloppet kunde inte läsas av.",
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
@@ -88,6 +90,8 @@ const TRANSLATIONS = {
     receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
     receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
     openReceipt: "Open receipt full size", closeReceipt: "Close receipt", receiptFullSize: "Receipt in full size", receiptZoomHint: "Pinch to zoom · drag to move",
+    receiptReadingAmount: "Reading the amount…", receiptAmountFound: "Suggestion: {amount} has been filled in.",
+    receiptAmountMissing: "Could not find a clear total amount.", receiptAmountFailed: "The amount could not be read.",
   },
 };
 const requestedLanguage = new URL(window.location.href).searchParams.get("lang");
@@ -100,7 +104,18 @@ if (requestedLanguage === "en" || requestedLanguage === "sv") {
 const savedTheme = localStorage.getItem("split-happens-theme");
 let THEME = ["system", "light", "dark"].includes(savedTheme) ? savedTheme : "system";
 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
-const PROFILE_COLORS = ["#ef5b5b", "#f28c45", "#e6c84f", "#62b86b", "#5c8de8", "#9a6dd7"];
+const PROFILE_COLORS = [
+  "#ef5b5b",
+  "#f28c45",
+  "#e6c84f",
+  "#9fbe55",
+  "#62b86b",
+  "#38b6a5",
+  "#4baed4",
+  "#5c8de8",
+  "#9a6dd7",
+  "#df6da9",
+];
 let SETTINGS_COLOR = PROFILE_COLORS[0];
 let SETTINGS_AVATAR_MODE = "letter";
 let SETTINGS_AVATAR_EMOJI = "";
@@ -625,6 +640,9 @@ let removeExistingReceipt = false;
 const receiptPointers = new Map();
 let receiptView = { scale: 1, x: 0, y: 0 };
 let receiptGesture = null;
+let receiptOcrRequest = 0;
+let tesseractLoader = null;
+const TESSERACT_SCRIPT = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/6.0.1/tesseract.min.js";
 
 // ---- category icon popup ----
 const ICON_DEFAULT = "🧾"; // receipt is the default category
@@ -817,6 +835,102 @@ function showReceiptError(message = "") {
   error.hidden = !message;
 }
 
+function showReceiptOcrStatus(message = "", state = "") {
+  const status = document.getElementById("receipt-ocr-status");
+  status.textContent = message;
+  status.dataset.state = state;
+  status.hidden = !message;
+}
+
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (tesseractLoader) return tesseractLoader;
+  tesseractLoader = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = TESSERACT_SCRIPT;
+    script.crossOrigin = "anonymous";
+    script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("ocr-unavailable"));
+    script.onerror = () => reject(new Error("ocr-unavailable"));
+    document.head.appendChild(script);
+  }).catch((error) => {
+    tesseractLoader = null;
+    throw error;
+  });
+  return tesseractLoader;
+}
+
+function parseReceiptAmount(value) {
+  const normalized = value
+    .replace(/\s/g, "")
+    .replace(/(\d)[.,](?=\d{3}(?:\D|$))/g, "$1")
+    .replace(",", ".");
+  const amount = Number.parseFloat(normalized);
+  return Number.isFinite(amount) && amount > 0 && amount < 1000000 ? amount : null;
+}
+
+function guessReceiptAmount(text) {
+  const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const positiveWords = /\b(att\s*betala|totalt?|summa|slutsumma|belopp|amount\s*due|grand\s*total|total)\b/i;
+  const negativeWords = /\b(moms|varav|vat|rabatt|discount|växel|change|delsumma|subtotal|avrundning|rounding)\b/i;
+  const amountPattern = /(?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2}(?!\d)|(?:\d{1,3}(?:[ .]\d{3})+|\d+)\s*(?:kr|sek)\b/gi;
+  const candidates = [];
+
+  lines.forEach((line, lineIndex) => {
+    const matches = [...line.matchAll(amountPattern)];
+    matches.forEach((match) => {
+      const amount = parseReceiptAmount(match[0].replace(/\s*(?:kr|sek)\b/i, ""));
+      if (amount === null) return;
+      let score = (lineIndex / Math.max(1, lines.length - 1)) * 3;
+      if (positiveWords.test(line)) score += 12;
+      if (negativeWords.test(line)) score -= 8;
+      if (/\b(kr|sek)\b/i.test(line)) score += 1;
+      candidates.push({ amount, score, lineIndex });
+    });
+  });
+
+  if (!candidates.length) return null;
+  const largestAmount = Math.max(...candidates.map((candidate) => candidate.amount));
+  candidates.forEach((candidate) => {
+    if (candidate.amount === largestAmount) candidate.score += 2;
+  });
+  candidates.sort((first, second) =>
+    second.score - first.score || second.lineIndex - first.lineIndex || second.amount - first.amount);
+  return candidates[0].amount;
+}
+
+async function suggestAmountFromReceipt(imageData, requestId, initialAmount) {
+  showReceiptOcrStatus(t("receiptReadingAmount"), "loading");
+  try {
+    const Tesseract = await loadTesseract();
+    const result = await Tesseract.recognize(imageData, "swe", {
+      logger: (progress) => {
+        if (requestId !== receiptOcrRequest || progress.status !== "recognizing text") return;
+        const percentage = Math.max(1, Math.round((progress.progress || 0) * 100));
+        showReceiptOcrStatus(`${t("receiptReadingAmount")} ${percentage} %`, "loading");
+      },
+    });
+    if (requestId !== receiptOcrRequest) return;
+    const suggestion = guessReceiptAmount(result?.data?.text);
+    if (suggestion === null) {
+      showReceiptOcrStatus(t("receiptAmountMissing"), "muted");
+      return;
+    }
+    const amountInput = document.getElementById("e-amount");
+    if (amountInput.value !== initialAmount && amountInput.value.trim() !== "") {
+      showReceiptOcrStatus(t("receiptAmountFound", { amount: kr(suggestion) }), "muted");
+      return;
+    }
+    amountInput.value = suggestion.toFixed(2);
+    updatePreview();
+    updateEditingDirtyState();
+    showReceiptOcrStatus(t("receiptAmountFound", { amount: kr(suggestion) }), "success");
+  } catch (error) {
+    if (requestId !== receiptOcrRequest) return;
+    console.error(error);
+    showReceiptOcrStatus(t("receiptAmountFailed"), "muted");
+  }
+}
+
 function renderReceiptPreview(url = "") {
   const preview = document.getElementById("receipt-preview");
   const picker = document.querySelector(".receipt-picker");
@@ -963,9 +1077,11 @@ function resetExpenseForm() {
   document.getElementById("e-receipt").value = "";
   pendingReceiptData = "";
   removeExistingReceipt = false;
+  receiptOcrRequest += 1;
   clearPendingReceiptUrl();
   renderReceiptPreview();
   showReceiptError();
+  showReceiptOcrStatus();
   updateCustomSplitLabels();
   setIcon(ICON_DEFAULT);
   closeIconPop();
@@ -993,9 +1109,11 @@ async function startEditing(entry) {
   document.getElementById("custom-split").hidden = entry.split !== "custom";
   pendingReceiptData = "";
   removeExistingReceipt = false;
+  receiptOcrRequest += 1;
   clearPendingReceiptUrl();
   renderReceiptPreview();
   showReceiptError();
+  showReceiptOcrStatus();
   setIcon(entry.icon || ICON_DEFAULT);
   document.getElementById("submit-icon").textContent = "✓";
   document.getElementById("submit-label").textContent = t("save");
@@ -1073,7 +1191,10 @@ function initApp() {
   document.getElementById("e-receipt").addEventListener("change", async (event) => {
     const [file] = event.target.files;
     if (!file) return;
+    const requestId = ++receiptOcrRequest;
+    const initialAmount = document.getElementById("e-amount").value;
     showReceiptError();
+    showReceiptOcrStatus();
     try {
       const imageData = await compressReceipt(file);
       clearPendingReceiptUrl();
@@ -1082,6 +1203,7 @@ function initApp() {
       removeExistingReceipt = false;
       renderReceiptPreview(pendingReceiptUrl);
       updateEditingDirtyState();
+      suggestAmountFromReceipt(imageData, requestId, initialAmount);
     } catch (error) {
       event.target.value = "";
       showReceiptError(t(error.message === "too-large" ? "receiptTooLarge" : "receiptInvalid"));
@@ -1089,12 +1211,14 @@ function initApp() {
   });
 
   document.getElementById("receipt-remove").addEventListener("click", () => {
+    receiptOcrRequest += 1;
     document.getElementById("e-receipt").value = "";
     pendingReceiptData = "";
     removeExistingReceipt = Boolean(EDITING_ID && EDITING_HAS_RECEIPT);
     clearPendingReceiptUrl();
     renderReceiptPreview();
     showReceiptError();
+    showReceiptOcrStatus();
     updateEditingDirtyState();
   });
 
