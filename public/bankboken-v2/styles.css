@@ -219,6 +219,9 @@ button { font-family: inherit; cursor: pointer; }
   width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.9);
   color: #111; font-size: 1.05rem; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
 }
+.receipt-zoom img {
+  width: 18px; height: 18px; max-height: none; object-fit: contain; background: transparent;
+}
 .receipt-preview-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; }
 .receipt-change,
 .receipt-preview-actions button {
