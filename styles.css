@@ -411,7 +411,8 @@ html[data-theme="dark"] .edit-cancel img { filter: invert(1); }
 .settings-name-field input { height: 54px; }
 .settings-avatar-trigger {
   display: grid; place-items: center; width: 54px; height: 54px; padding: 0;
-  border: 1px solid transparent; border-radius: 50%; background: var(--profile-color);
+  border: 1px solid transparent; border-radius: 50%;
+  background: color-mix(in srgb, var(--profile-color) 65%, white);
   color: #fff; font-size: 1.25rem; font-weight: 700; line-height: 1;
 }
 .settings-avatar-trigger.avatar-emoji { font-size: 1.48rem; }
@@ -427,7 +428,7 @@ html[data-theme="dark"] .edit-cancel img { filter: invert(1); }
 .avatar-confirm { color: var(--ink); }
 .avatar-modal-preview {
   display: grid; place-items: center; width: 154px; height: 154px; margin: 0 auto 24px;
-  border-radius: 50%; background: var(--profile-color); color: #fff;
+  border-radius: 50%; background: color-mix(in srgb, var(--profile-color) 65%, white); color: #fff;
   font-size: 3.9rem; font-weight: 700; line-height: 1;
 }
 .avatar-modal-preview.avatar-emoji { font-size: 4.5rem; }
@@ -450,24 +451,33 @@ html[data-theme="dark"] .edit-cancel img { filter: invert(1); }
 .profile-colors { display: flex; flex-wrap: wrap; gap: 12px; padding: 4px; }
 .profile-colors button {
   position: relative; width: 34px; height: 34px; flex: 0 0 34px; padding: 0;
-  border: 2px solid transparent; border-radius: 50%; background: var(--choice-color);
+  border: 2px solid transparent; border-radius: 50%;
+  background: color-mix(in srgb, var(--choice-color) 65%, white);
 }
 .profile-colors button.active { border-color: var(--card); box-shadow: 0 0 0 2px var(--ink); }
 .person-option { display: inline-flex !important; align-items: center; justify-content: center; gap: 7px; }
 .person-option::before {
   content: var(--profile-avatar); display: inline-grid; place-items: center;
-  width: 19px; height: 19px; flex: 0 0 19px; border-radius: 50%; background: var(--profile-color);
+  width: 19px; height: 19px; flex: 0 0 19px; border-radius: 50%;
+  background: color-mix(in srgb, var(--profile-color) 65%, white);
   color: #fff; font-size: var(--profile-avatar-size, 0.7rem); font-weight: 700; line-height: 1;
 }
 .profile-avatar {
   display: inline-grid; place-items: center; width: 22px; height: 22px; flex: 0 0 22px;
-  border-radius: 50%; background: var(--profile-color); color: #fff;
+  border-radius: 50%; background: color-mix(in srgb, var(--profile-color) 65%, white); color: #fff;
   font-style: normal; font-size: 0.68rem; font-weight: 700; line-height: 1;
 }
 .profile-dot {
   display: inline-block; width: 9px; height: 9px; flex: 0 0 9px;
-  border-radius: 50%; background: var(--profile-color);
+  border-radius: 50%; background: color-mix(in srgb, var(--profile-color) 65%, white);
 }
+html[data-theme="dark"] .settings-avatar-trigger,
+html[data-theme="dark"] .avatar-modal-preview,
+html[data-theme="dark"] .person-option::before,
+html[data-theme="dark"] .profile-avatar,
+html[data-theme="dark"] .profile-dot,
+html[data-theme="dark"] .history-person-avatar { background: var(--profile-color); }
+html[data-theme="dark"] .profile-colors button { background: var(--choice-color); }
 .total-label { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .settings-logout {
   width: 100%; margin-top: 12px; padding: 14px; border: 1px solid var(--line);
@@ -529,7 +539,7 @@ html[data-theme="dark"] .edit-cancel img { filter: invert(1); }
 .h-sub { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 0.82rem; margin-top: 3px; }
 .history-person-avatar {
   display: inline-grid; place-items: center; width: 18px; height: 18px; flex: 0 0 18px;
-  border-radius: 50%; background: var(--profile-color); color: #fff;
+  border-radius: 50%; background: color-mix(in srgb, var(--profile-color) 65%, white); color: #fff;
   font-style: normal; font-size: 0.68rem; font-weight: 700; line-height: 1;
 }
 .history-person-avatar.avatar-emoji { font-size: 0.8rem; }
