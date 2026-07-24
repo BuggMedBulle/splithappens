@@ -51,7 +51,7 @@ const TRANSLATIONS = {
     receipt: "Kvitto", addReceipt: "Lägg till bild", changeReceipt: "Byt bild", removeReceipt: "Ta bort",
     receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
     receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
-    openReceipt: "Öppna kvittot i full storlek", closeReceipt: "Stäng kvitto", receiptFullSize: "Kvitto i full storlek",
+    openReceipt: "Öppna kvittot i full storlek", closeReceipt: "Stäng kvitto", receiptFullSize: "Kvitto i full storlek", receiptZoomHint: "Nyp för att zooma · dra för att flytta",
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
@@ -87,7 +87,7 @@ const TRANSLATIONS = {
     receipt: "Receipt", addReceipt: "Add image", changeReceipt: "Change image", removeReceipt: "Remove",
     receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
     receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
-    openReceipt: "Open receipt full size", closeReceipt: "Close receipt", receiptFullSize: "Receipt in full size",
+    openReceipt: "Open receipt full size", closeReceipt: "Close receipt", receiptFullSize: "Receipt in full size", receiptZoomHint: "Pinch to zoom · drag to move",
   },
 };
 const requestedLanguage = new URL(window.location.href).searchParams.get("lang");
@@ -622,6 +622,9 @@ let EDITING_HAS_RECEIPT = false;
 let pendingReceiptData = "";
 let pendingReceiptUrl = "";
 let removeExistingReceipt = false;
+const receiptPointers = new Map();
+let receiptView = { scale: 1, x: 0, y: 0 };
+let receiptGesture = null;
 
 // ---- category icon popup ----
 const ICON_DEFAULT = "🧾"; // receipt is the default category
@@ -824,17 +827,78 @@ function renderReceiptPreview(url = "") {
   if (url) image.src = url;
 }
 
+function constrainReceiptView() {
+  const stage = document.getElementById("receipt-lightbox-stage");
+  const image = document.getElementById("receipt-lightbox-image");
+  receiptView.scale = Math.min(5, Math.max(1, receiptView.scale));
+  if (receiptView.scale === 1) {
+    receiptView.x = 0;
+    receiptView.y = 0;
+    return;
+  }
+  const maxX = Math.max(0, (image.clientWidth * receiptView.scale - stage.clientWidth) / 2);
+  const maxY = Math.max(0, (image.clientHeight * receiptView.scale - stage.clientHeight) / 2);
+  receiptView.x = Math.min(maxX, Math.max(-maxX, receiptView.x));
+  receiptView.y = Math.min(maxY, Math.max(-maxY, receiptView.y));
+}
+
+function applyReceiptView() {
+  constrainReceiptView();
+  document.getElementById("receipt-lightbox-image").style.transform =
+    `translate3d(${receiptView.x}px, ${receiptView.y}px, 0) scale(${receiptView.scale})`;
+}
+
+function resetReceiptView() {
+  receiptPointers.clear();
+  receiptGesture = null;
+  receiptView = { scale: 1, x: 0, y: 0 };
+  applyReceiptView();
+}
+
+function receiptPoint(event) {
+  return { x: event.clientX, y: event.clientY };
+}
+
+function receiptDistance(first, second) {
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function receiptMidpoint(first, second) {
+  return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+}
+
+function startReceiptGesture() {
+  const points = [...receiptPointers.values()];
+  if (points.length < 2) {
+    receiptGesture = null;
+    return;
+  }
+  receiptGesture = {
+    distance: Math.max(1, receiptDistance(points[0], points[1])),
+    midpoint: receiptMidpoint(points[0], points[1]),
+    scale: receiptView.scale,
+    x: receiptView.x,
+    y: receiptView.y,
+  };
+}
+
 function openReceiptLightbox() {
   const source = document.getElementById("receipt-image").src;
   if (!source) return;
-  document.getElementById("receipt-lightbox-image").src = source;
+  const image = document.getElementById("receipt-lightbox-image");
+  image.onload = resetReceiptView;
+  image.src = source;
   document.getElementById("receipt-lightbox").hidden = false;
+  resetReceiptView();
   document.getElementById("receipt-lightbox-close").focus();
 }
 
 function closeReceiptLightbox() {
   document.getElementById("receipt-lightbox").hidden = true;
-  document.getElementById("receipt-lightbox-image").removeAttribute("src");
+  const image = document.getElementById("receipt-lightbox-image");
+  image.onload = null;
+  image.removeAttribute("src");
+  resetReceiptView();
   document.getElementById("receipt-open").focus();
 }
 
@@ -1039,6 +1103,68 @@ function initApp() {
   document.getElementById("receipt-lightbox").addEventListener("click", (event) => {
     if (event.target === event.currentTarget) closeReceiptLightbox();
   });
+  const receiptStage = document.getElementById("receipt-lightbox-stage");
+  receiptStage.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    receiptStage.setPointerCapture(event.pointerId);
+    const point = receiptPoint(event);
+    receiptPointers.set(event.pointerId, {
+      ...point,
+      previousX: point.x,
+      previousY: point.y,
+    });
+    if (receiptPointers.size >= 2) startReceiptGesture();
+  });
+  receiptStage.addEventListener("pointermove", (event) => {
+    const pointer = receiptPointers.get(event.pointerId);
+    if (!pointer) return;
+    event.preventDefault();
+    const point = receiptPoint(event);
+    pointer.x = point.x;
+    pointer.y = point.y;
+
+    if (receiptPointers.size >= 2 && receiptGesture) {
+      const points = [...receiptPointers.values()];
+      const distance = Math.max(1, receiptDistance(points[0], points[1]));
+      const midpoint = receiptMidpoint(points[0], points[1]);
+      receiptView.scale = receiptGesture.scale * (distance / receiptGesture.distance);
+      receiptView.x = receiptGesture.x + midpoint.x - receiptGesture.midpoint.x;
+      receiptView.y = receiptGesture.y + midpoint.y - receiptGesture.midpoint.y;
+    } else if (receiptPointers.size === 1 && receiptView.scale > 1) {
+      receiptView.x += point.x - pointer.previousX;
+      receiptView.y += point.y - pointer.previousY;
+    }
+
+    pointer.previousX = point.x;
+    pointer.previousY = point.y;
+    applyReceiptView();
+  });
+  const endReceiptPointer = (event) => {
+    receiptPointers.delete(event.pointerId);
+    if (receiptPointers.size >= 2) {
+      startReceiptGesture();
+      return;
+    }
+    receiptGesture = null;
+    const remaining = [...receiptPointers.values()][0];
+    if (remaining) {
+      remaining.previousX = remaining.x;
+      remaining.previousY = remaining.y;
+    }
+  };
+  receiptStage.addEventListener("pointerup", endReceiptPointer);
+  receiptStage.addEventListener("pointercancel", endReceiptPointer);
+  receiptStage.addEventListener("dblclick", () => {
+    receiptView = receiptView.scale > 1
+      ? { scale: 1, x: 0, y: 0 }
+      : { scale: 2, x: 0, y: 0 };
+    applyReceiptView();
+  });
+  receiptStage.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    receiptView.scale += event.deltaY < 0 ? 0.25 : -0.25;
+    applyReceiptView();
+  }, { passive: false });
 
   document.getElementById("e-amount").addEventListener("input", updatePreview);
   document.getElementById("e-custom-share").addEventListener("input", () => {

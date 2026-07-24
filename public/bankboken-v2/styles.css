@@ -228,12 +228,17 @@ button { font-family: inherit; cursor: pointer; }
 .receipt-error { margin: 8px 2px 0; color: var(--danger); font-size: 0.85rem; }
 
 .receipt-lightbox {
-  position: fixed; inset: 0; z-index: 300; padding: max(64px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
-  display: grid; place-items: center; background: rgba(10, 10, 10, 0.96);
+  position: fixed; inset: 0; z-index: 300; padding: max(58px, env(safe-area-inset-top)) 12px max(48px, env(safe-area-inset-bottom));
+  display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; background: rgba(10, 10, 10, 0.96);
+  overscroll-behavior: none;
+}
+.receipt-lightbox-stage {
+  position: relative; display: grid; place-items: center; min-width: 0; min-height: 0;
+  width: 100%; height: 100%; overflow: hidden; touch-action: none; user-select: none;
 }
 .receipt-lightbox-image {
-  display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100dvh - 96px);
-  object-fit: contain; border-radius: 10px;
+  display: block; width: auto; height: auto; max-width: 100%; max-height: 100%;
+  object-fit: contain; border-radius: 10px; transform-origin: center; will-change: transform;
 }
 .receipt-lightbox-close {
   position: fixed; top: max(16px, env(safe-area-inset-top)); right: 16px; z-index: 1;
@@ -241,6 +246,9 @@ button { font-family: inherit; cursor: pointer; }
   border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.92);
 }
 .receipt-lightbox-close img { width: 20px; height: 20px; }
+.receipt-lightbox-hint {
+  margin: 0; text-align: center; color: rgba(255, 255, 255, 0.72); font-size: 0.78rem;
+}
 body:has(.receipt-lightbox:not([hidden])) { overflow: hidden; }
 
 .input-wrap { position: relative; }
