@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=split-happens-43" />
+  <link rel="stylesheet" href="styles.css?v=split-happens-55" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -138,6 +138,24 @@
             </div>
             <p id="receipt-error" class="receipt-error" hidden></p>
             <p id="receipt-ocr-status" class="receipt-ocr-status" aria-live="polite" hidden></p>
+            <div id="receipt-items" class="receipt-items" hidden>
+              <div class="receipt-items-head">
+                <div>
+                  <span class="receipt-items-title">
+                    <strong data-i18n="receiptItems">Fördela kvittot</strong>
+                    <span class="beta-label">BETA</span>
+                  </span>
+                  <span data-i18n="receiptItemsHelp">Välj vilka som ska vara med och stå för kostnaden på varje rad.</span>
+                </div>
+                <button id="receipt-items-close" class="receipt-items-close" type="button" aria-label="Ta bort kvittodelningen" data-i18n-aria="removeReceiptItems">×</button>
+              </div>
+              <div id="receipt-items-list" class="receipt-items-list"></div>
+              <button id="receipt-item-add" class="receipt-item-add" type="button" data-i18n="addReceiptItem">+ Lägg till rad</button>
+              <div class="receipt-items-summary">
+                <span id="receipt-items-total"></span>
+                <span id="receipt-items-difference"></span>
+              </div>
+            </div>
           </div>
 
           <label class="field">
@@ -319,6 +337,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=split-happens-46"></script>
+  <script type="module" src="app.js?v=split-happens-57"></script>
 </body>
 </html>

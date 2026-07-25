@@ -54,6 +54,12 @@ const TRANSLATIONS = {
     openReceipt: "Öppna kvittot i full storlek", closeReceipt: "Stäng kvitto", receiptFullSize: "Kvitto i full storlek", receiptZoomHint: "Nyp för att zooma · dra för att flytta",
     receiptReadingAmount: "Läser av beloppet…", receiptAmountFound: "Förslag: {amount} har fyllts i.",
     receiptAmountMissing: "Kunde inte hitta ett tydligt totalbelopp.", receiptAmountFailed: "Beloppet kunde inte läsas av.",
+    receiptItems: "Fördela kvittot", receiptItemsHelp: "Välj vilka som ska vara med och stå för kostnaden på varje rad.",
+    addReceiptItem: "+ Lägg till rad", receiptItemName: "Produkt", receiptItemTotal: "Aktuella rader: {amount}",
+    receiptItemBelowScanned: "{amount} mindre än avläst kvittototal",
+    receiptItemAboveScanned: "{amount} mer än avläst kvittototal",
+    receiptItemExact: "Samma som avläst kvittototal",
+    removeReceiptItems: "Ta bort kvittodelningen",
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
@@ -92,6 +98,12 @@ const TRANSLATIONS = {
     openReceipt: "Open receipt full size", closeReceipt: "Close receipt", receiptFullSize: "Receipt in full size", receiptZoomHint: "Pinch to zoom · drag to move",
     receiptReadingAmount: "Reading the amount…", receiptAmountFound: "Suggestion: {amount} has been filled in.",
     receiptAmountMissing: "Could not find a clear total amount.", receiptAmountFailed: "The amount could not be read.",
+    receiptItems: "Split receipt", receiptItemsHelp: "Choose who should share the cost of each item.",
+    addReceiptItem: "+ Add row", receiptItemName: "Item", receiptItemTotal: "Current items: {amount}",
+    receiptItemBelowScanned: "{amount} below scanned receipt total",
+    receiptItemAboveScanned: "{amount} above scanned receipt total",
+    receiptItemExact: "Same as scanned receipt total",
+    removeReceiptItems: "Remove receipt split",
   },
 };
 const requestedLanguage = new URL(window.location.href).searchParams.get("lang");
@@ -275,13 +287,16 @@ function setSync(ok, title) {
 //  balance > 0  →  B (Halvis) owes A (Helo).
 // ============================================================
 function sharesOf(e) {
-  if (e.split === "a") return { a: e.amount, b: 0 };        // Helo bears all
-  if (e.split === "b") return { a: 0, b: e.amount };        // Halvis bears all
+  const sharedAmount = e.type === "expense"
+    ? Math.max(0, e.amount - (Number(e.excludedAmount) || 0))
+    : e.amount;
+  if (e.split === "a") return { a: sharedAmount, b: 0 };        // Helo bears all
+  if (e.split === "b") return { a: 0, b: sharedAmount };        // Halvis bears all
   if (e.split === "custom") {
     const shareA = Math.min(1, Math.max(0, Number(e.shareA) || 0));
-    return { a: e.amount * shareA, b: e.amount * (1 - shareA) };
+    return { a: sharedAmount * shareA, b: sharedAmount * (1 - shareA) };
   }
-  return { a: e.amount / 2, b: e.amount / 2 };              // 50/50
+  return { a: sharedAmount / 2, b: sharedAmount / 2 };              // 50/50
 }
 
 function balanceOf(entries) {
@@ -642,6 +657,9 @@ let receiptView = { scale: 1, x: 0, y: 0 };
 let receiptGesture = null;
 let receiptOcrRequest = 0;
 let tesseractLoader = null;
+let receiptItems = [];
+let receiptGrossAmount = 0;
+let receiptScannedTotal = 0;
 const TESSERACT_SCRIPT = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/6.0.1/tesseract.min.js";
 
 // ---- category icon popup ----
@@ -898,6 +916,123 @@ function guessReceiptAmount(text) {
   return candidates[0].amount;
 }
 
+function extractReceiptItems(text, receiptTotal) {
+  const excluded = /\b(total|totalt|summa|att\s*betala|subtotal|delsumma|moms|vat|varav|rabatt|discount|växel|change|avrundning|rounding|kort|card|swish|kontant|cash|org\.?nr|datum|date|tid|time)\b/i;
+  const amountAtEnd = /(?:^|\s)((?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2})\s*(?:kr|sek)?\s*$/i;
+  const quantityOnly = /^\d+(?:[,.]\d+)?\s*(?:st(?:yck)?\.?\s*)?[x×]\s*(?:\d+[,.]\d{2})?$/i;
+  const seen = new Set();
+  const lines = String(text || "").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+  return lines.flatMap((line, lineIndex) => {
+    const match = line.match(amountAtEnd);
+    if (!match || excluded.test(line)) return [];
+    const amount = parseReceiptAmount(match[1]);
+    if (amount === null || amount === receiptTotal) return [];
+    const inlineName = line.slice(0, match.index).replace(/^[^A-Za-zÅÄÖåäö0-9]+|[\s.:;-]+$/g, "").trim();
+    const normalizedInlineName = inlineName
+      .replace(/[—–−-]+/g, " ")
+      .replace(/[^\dA-Za-zÅÄÖåäö.,x×\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const previousLine = lines[lineIndex - 1] || "";
+    const isQuantityLine = quantityOnly.test(normalizedInlineName);
+    if (isQuantityLine && (!/[A-Za-zÅÄÖåäö]/.test(previousLine) || excluded.test(previousLine))) return [];
+    const name = isQuantityLine
+      ? previousLine.replace(/^[^A-Za-zÅÄÖåäö0-9]+|[\s.:;-]+$/g, "").trim()
+      : inlineName;
+    if (name.length < 2 || !/[A-Za-zÅÄÖåäö]/.test(name)) return [];
+    const key = `${name.toLowerCase()}-${amount}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ id: crypto.randomUUID(), name, amount, allocation: "even" }];
+  }).slice(0, 30);
+}
+
+function receiptItemsShare() {
+  const selfAmount = receiptItems.reduce((sum, item) => {
+    if (item.allocation === "self") return sum + item.amount;
+    if (item.allocation === "even") return sum + item.amount / 2;
+    return sum;
+  }, 0);
+  const includedTotal = receiptItems.reduce(
+    (sum, item) => item.allocation === "none" ? sum : sum + item.amount,
+    0,
+  );
+  const receiptTotal = parseFloat(document.getElementById("e-amount").value) || includedTotal;
+  const unassigned = Math.max(0, receiptTotal - includedTotal);
+  return receiptTotal > 0 ? (selfAmount + unassigned / 2) / receiptTotal : 0.5;
+}
+
+function receiptItemsExcludedAmount() {
+  return receiptItems.reduce((sum, item) => item.allocation === "none" ? sum + item.amount : sum, 0);
+}
+
+function applyReceiptItemsSplit() {
+  if (!receiptItems.length) return;
+  document.getElementById("e-custom-share").value = String(100 - Math.round(receiptItemsShare() * 100));
+  setActive("e-split", "custom");
+  onSplitChange("custom");
+  updateCustomSplitLabels();
+  updateEditingDirtyState();
+}
+
+function renderReceiptItems() {
+  const panel = document.getElementById("receipt-items");
+  const list = document.getElementById("receipt-items-list");
+  panel.hidden = !receiptItems.length;
+  list.replaceChildren();
+  const selfName = subjectName(CURRENT_USER);
+  const otherName = subjectName(otherPersonKey());
+
+  receiptItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "receipt-item";
+    row.dataset.id = item.id;
+    row.innerHTML = `
+      <div class="receipt-item-fields">
+        <input class="receipt-item-name" value="${escapeHtml(item.name)}" aria-label="${t("receiptItemName")}" />
+        <div class="receipt-item-amount-wrap">
+          <input class="receipt-item-amount" type="number" inputmode="decimal" min="0" step="0.01" value="${item.amount.toFixed(2)}" aria-label="${t("amount")}" />
+          <span>${t("currencySuffix")}</span>
+        </div>
+        <button class="receipt-item-remove" type="button" aria-label="${t("delete")}">×</button>
+      </div>
+      <div class="receipt-item-people" aria-label="${t("split")}">
+        <button type="button" data-person="self" aria-pressed="false">${escapeHtml(selfName)}</button>
+        <button type="button" data-person="other" aria-pressed="false">${escapeHtml(otherName)}</button>
+      </div>`;
+    row.classList.toggle("is-excluded", item.allocation === "none");
+    const selectedPeople = item.allocation === "even"
+      ? ["self", "other"]
+      : (item.allocation === "none" ? [] : [item.allocation]);
+    row.querySelectorAll("[data-person]").forEach((button) => {
+      const active = selectedPeople.includes(button.dataset.person);
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+      const personKey = button.dataset.person === "self" ? CURRENT_USER : otherPersonKey();
+      button.style.setProperty("--profile-color", personColor(personKey));
+    });
+    list.appendChild(row);
+  });
+
+  const excludedAmount = receiptItemsExcludedAmount();
+  if (receiptGrossAmount > 0) {
+    document.getElementById("e-amount").value = Math.max(0, receiptGrossAmount - excludedAmount).toFixed(2);
+  }
+  const itemTotal = receiptItems.reduce(
+    (sum, item) => item.allocation === "none" ? sum : sum + item.amount,
+    0,
+  );
+  const receiptTotal = parseFloat(document.getElementById("e-amount").value) || 0;
+  const difference = receiptTotal - receiptScannedTotal;
+  document.getElementById("receipt-items-total").textContent = t("receiptItemTotal", { amount: kr(itemTotal) });
+  const differenceElement = document.getElementById("receipt-items-difference");
+  differenceElement.textContent = Math.abs(difference) < 0.01
+    ? t("receiptItemExact")
+    : t(difference < 0 ? "receiptItemBelowScanned" : "receiptItemAboveScanned", { amount: kr(Math.abs(difference)) });
+  differenceElement.classList.toggle("is-exact", Math.abs(difference) < 0.01);
+  applyReceiptItemsSplit();
+}
+
 async function suggestAmountFromReceipt(imageData, requestId, initialAmount) {
   showReceiptOcrStatus(t("receiptReadingAmount"), "loading");
   try {
@@ -910,17 +1045,27 @@ async function suggestAmountFromReceipt(imageData, requestId, initialAmount) {
       },
     });
     if (requestId !== receiptOcrRequest) return;
-    const suggestion = guessReceiptAmount(result?.data?.text);
+    const ocrText = result?.data?.text || "";
+    const suggestion = guessReceiptAmount(ocrText);
     if (suggestion === null) {
       showReceiptOcrStatus(t("receiptAmountMissing"), "muted");
       return;
     }
     const amountInput = document.getElementById("e-amount");
+    receiptScannedTotal = suggestion;
     if (amountInput.value !== initialAmount && amountInput.value.trim() !== "") {
+      receiptGrossAmount = Number(amountInput.value) || suggestion;
+      receiptItems = extractReceiptItems(ocrText, suggestion);
+      renderReceiptItems();
       showReceiptOcrStatus(t("receiptAmountFound", { amount: kr(suggestion) }), "muted");
       return;
     }
-    amountInput.value = suggestion.toFixed(2);
+    receiptItems = extractReceiptItems(ocrText, suggestion);
+    receiptGrossAmount = receiptItems.length
+      ? receiptItems.reduce((sum, item) => sum + item.amount, 0)
+      : suggestion;
+    amountInput.value = receiptGrossAmount.toFixed(2);
+    renderReceiptItems();
     updatePreview();
     updateEditingDirtyState();
     showReceiptOcrStatus(t("receiptAmountFound", { amount: kr(suggestion) }), "success");
@@ -1082,6 +1227,10 @@ function resetExpenseForm() {
   renderReceiptPreview();
   showReceiptError();
   showReceiptOcrStatus();
+  receiptItems = [];
+  receiptGrossAmount = 0;
+  receiptScannedTotal = 0;
+  renderReceiptItems();
   updateCustomSplitLabels();
   setIcon(ICON_DEFAULT);
   closeIconPop();
@@ -1114,6 +1263,10 @@ async function startEditing(entry) {
   renderReceiptPreview();
   showReceiptError();
   showReceiptOcrStatus();
+  receiptItems = [];
+  receiptGrossAmount = 0;
+  receiptScannedTotal = 0;
+  renderReceiptItems();
   setIcon(entry.icon || ICON_DEFAULT);
   document.getElementById("submit-icon").textContent = "✓";
   document.getElementById("submit-label").textContent = t("save");
@@ -1195,6 +1348,10 @@ function initApp() {
     const initialAmount = document.getElementById("e-amount").value;
     showReceiptError();
     showReceiptOcrStatus();
+    receiptItems = [];
+    receiptGrossAmount = 0;
+    receiptScannedTotal = 0;
+    renderReceiptItems();
     try {
       const imageData = await compressReceipt(file);
       clearPendingReceiptUrl();
@@ -1219,7 +1376,64 @@ function initApp() {
     renderReceiptPreview();
     showReceiptError();
     showReceiptOcrStatus();
+    receiptItems = [];
+    receiptGrossAmount = 0;
+    receiptScannedTotal = 0;
+    renderReceiptItems();
     updateEditingDirtyState();
+  });
+
+  document.getElementById("receipt-item-add").addEventListener("click", () => {
+    receiptItems.push({ id: crypto.randomUUID(), name: "", amount: 0, allocation: "even" });
+    renderReceiptItems();
+    document.querySelector(".receipt-item:last-child .receipt-item-name")?.focus();
+  });
+  document.getElementById("receipt-items-close").addEventListener("click", () => {
+    if (receiptScannedTotal > 0) {
+      document.getElementById("e-amount").value = receiptScannedTotal.toFixed(2);
+    }
+    receiptItems = [];
+    receiptGrossAmount = 0;
+    receiptScannedTotal = 0;
+    renderReceiptItems();
+    setActive("e-split", "even");
+    onSplitChange("even");
+    updateEditingDirtyState();
+  });
+  document.getElementById("receipt-items-list").addEventListener("change", (event) => {
+    const row = event.target.closest(".receipt-item");
+    const item = receiptItems.find((candidate) => candidate.id === row?.dataset.id);
+    if (!item) return;
+    if (event.target.classList.contains("receipt-item-name")) item.name = event.target.value;
+    if (event.target.classList.contains("receipt-item-amount")) {
+      const nextAmount = Math.max(0, Number(event.target.value) || 0);
+      receiptGrossAmount = Math.max(0, receiptGrossAmount + nextAmount - item.amount);
+      item.amount = nextAmount;
+    }
+    renderReceiptItems();
+  });
+  document.getElementById("receipt-items-list").addEventListener("click", (event) => {
+    const row = event.target.closest(".receipt-item");
+    const item = receiptItems.find((candidate) => candidate.id === row?.dataset.id);
+    if (!item) return;
+    const person = event.target.closest("[data-person]")?.dataset.person;
+    if (person) {
+      const selectedPeople = new Set(
+        item.allocation === "even" ? ["self", "other"] : (item.allocation === "none" ? [] : [item.allocation]),
+      );
+      if (selectedPeople.has(person)) selectedPeople.delete(person);
+      else selectedPeople.add(person);
+      item.allocation = selectedPeople.size === 2 ? "even" : ([...selectedPeople][0] || "none");
+    }
+    if (event.target.closest(".receipt-item-remove")) {
+      receiptGrossAmount = Math.max(0, receiptGrossAmount - item.amount);
+      receiptItems = receiptItems.filter((candidate) => candidate.id !== item.id);
+      if (!receiptItems.length) {
+        setActive("e-split", "even");
+        onSplitChange("even");
+      }
+    }
+    renderReceiptItems();
   });
 
   document.getElementById("receipt-open").addEventListener("click", openReceiptLightbox);
@@ -1290,7 +1504,11 @@ function initApp() {
     applyReceiptView();
   }, { passive: false });
 
-  document.getElementById("e-amount").addEventListener("input", updatePreview);
+  document.getElementById("e-amount").addEventListener("input", () => {
+    receiptGrossAmount = (parseFloat(document.getElementById("e-amount").value) || 0) + receiptItemsExcludedAmount();
+    updatePreview();
+    if (receiptItems.length) renderReceiptItems();
+  });
   document.getElementById("e-custom-share").addEventListener("input", () => {
     updateCustomSplitLabels();
     updatePreview();
@@ -1314,6 +1532,7 @@ function initApp() {
       type, desc, amount, icon: getIcon(),
       payer: payerKey(), split,
       shareA: split === "custom" ? customShareA() : null,
+      excludedAmount: 0,
       ts: expenseTimestamp(date, existingEntry?.ts),
     };
     const submitButton = ev.submitter;

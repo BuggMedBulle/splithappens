@@ -237,6 +237,86 @@ button { font-family: inherit; cursor: pointer; }
 }
 .receipt-ocr-status[data-state="success"] { color: var(--sage-strong); }
 @keyframes receipt-ocr-spin { to { transform: rotate(360deg); } }
+.receipt-items {
+  margin-top: 12px; padding: 14px; border: 1px solid var(--line);
+  border-radius: var(--r-field); background: var(--field);
+}
+.receipt-items-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.receipt-items-head > div { display: grid; gap: 3px; }
+.receipt-items-title { display: flex; align-items: center; gap: 7px; }
+.receipt-items-head strong { color: var(--ink); font-size: 0.95rem; }
+.receipt-items-head .beta-label {
+  display: inline-flex; align-items: center; min-height: 18px; padding: 2px 6px;
+  border-radius: var(--r-pill); background: #dceafa; color: #486b98;
+  font-family: var(--font-num); font-size: 0.58rem; font-weight: 750; letter-spacing: 0.08em;
+}
+[data-theme="dark"] .receipt-items-head .beta-label { background: #28384d; color: #afc9ec; }
+.receipt-items-head span { color: var(--ink-2); font-size: 0.78rem; line-height: 1.35; }
+.receipt-items-head button {
+  flex: 0 0 auto; padding: 0; border: 0; background: transparent;
+  color: var(--ink); font: inherit; font-size: 0.78rem; font-weight: 650;
+}
+.receipt-items-head .receipt-items-close {
+  display: grid; place-items: center; width: 28px; height: 28px; margin: -4px -4px 0 0;
+  border-radius: 50%; color: var(--ink-2); font-size: 1.25rem; font-weight: 400; line-height: 1;
+}
+.receipt-items-list { display: grid; gap: 12px; margin-top: 14px; }
+.receipt-item {
+  display: grid; gap: 10px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+}
+.receipt-item-fields { transition: opacity 0.15s ease; }
+.receipt-item.is-excluded .receipt-item-fields { opacity: 0.38; }
+.receipt-item-fields { display: grid; grid-template-columns: minmax(0, 1fr) 104px 24px; gap: 7px; }
+.receipt-item-fields input {
+  width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid transparent;
+  border-radius: 10px; background: var(--field); color: var(--ink); font: inherit; font-size: 0.86rem;
+}
+.receipt-item-fields .receipt-item-name {
+  min-width: 0; padding-left: 0; overflow: hidden; border-color: transparent;
+  background: transparent; font-weight: 600; text-overflow: ellipsis; white-space: nowrap;
+}
+.receipt-item-amount-wrap { position: relative; }
+.receipt-item-amount-wrap input {
+  padding-right: 28px; border-color: transparent; background: transparent;
+  font-family: var(--font-num); font-weight: 600; text-align: right;
+}
+.receipt-item-amount-wrap span {
+  position: absolute; top: 50%; right: 9px; transform: translateY(-50%);
+  color: var(--ink-2); font-size: 0.72rem; pointer-events: none;
+}
+.receipt-item-remove {
+  display: grid; place-items: center; width: 24px; height: 40px; padding: 0;
+  border: 0; background: transparent; color: var(--ink-2);
+  font: inherit; font-size: 1.15rem; font-weight: 400;
+}
+.receipt-item-people { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.receipt-item-people button {
+  display: flex; align-items: center; min-width: 0; padding: 5px 0; overflow: hidden;
+  border: 0; background: transparent; color: var(--ink-2);
+  font: inherit; font-size: 0.78rem; font-weight: 550; text-align: left;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.receipt-item-people button::before {
+  content: ""; display: inline-grid; place-items: center; flex: 0 0 17px;
+  width: 17px; height: 17px; margin-right: 8px; box-sizing: border-box;
+  border: 2px solid var(--profile-color); border-radius: 5px;
+  color: white; font-size: 0.68rem; font-weight: 800; line-height: 1;
+}
+.receipt-item-people button.active {
+  background: transparent; color: var(--ink);
+}
+.receipt-item-people button.active::before { content: "✓"; background: var(--profile-color); }
+.receipt-item-add {
+  display: block; margin: 12px 0 0; padding: 4px 0;
+  border: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: 0.8rem; font-weight: 650; text-align: left;
+}
+.receipt-items-summary {
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 12px;
+  border-top: 1px solid var(--line); color: var(--ink-2); font-size: 0.75rem;
+}
+.receipt-items-summary .is-exact { color: var(--sage-strong); }
 
 .receipt-lightbox {
   position: fixed; inset: 0; z-index: 300; padding: max(58px, env(safe-area-inset-top)) 12px max(48px, env(safe-area-inset-bottom));
