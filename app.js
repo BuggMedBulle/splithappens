@@ -1417,6 +1417,8 @@ function initApp() {
     const item = receiptItems.find((candidate) => candidate.id === row?.dataset.id);
     if (!item) return;
     const person = event.target.closest("[data-person]")?.dataset.person;
+    const removeButton = event.target.closest(".receipt-item-remove");
+    if (!person && !removeButton) return;
     if (person) {
       const selectedPeople = new Set(
         item.allocation === "even" ? ["self", "other"] : (item.allocation === "none" ? [] : [item.allocation]),
@@ -1425,7 +1427,7 @@ function initApp() {
       else selectedPeople.add(person);
       item.allocation = selectedPeople.size === 2 ? "even" : ([...selectedPeople][0] || "none");
     }
-    if (event.target.closest(".receipt-item-remove")) {
+    if (removeButton) {
       receiptGrossAmount = Math.max(0, receiptGrossAmount - item.amount);
       receiptItems = receiptItems.filter((candidate) => candidate.id !== item.id);
       if (!receiptItems.length) {
@@ -1468,7 +1470,7 @@ function initApp() {
       receiptView.scale = receiptGesture.scale * (distance / receiptGesture.distance);
       receiptView.x = receiptGesture.x + midpoint.x - receiptGesture.midpoint.x;
       receiptView.y = receiptGesture.y + midpoint.y - receiptGesture.midpoint.y;
-    } else if (receiptPointers.size === 1 && receiptView.scale > 1) {
+    } else if (receiptPointers.size === 1) {
       receiptView.x += point.x - pointer.previousX;
       receiptView.y += point.y - pointer.previousY;
     }
