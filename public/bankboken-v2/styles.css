@@ -267,7 +267,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .receipt-item-fields { transition: opacity 0.15s ease; }
 .receipt-item.is-excluded .receipt-item-fields { opacity: 0.38; }
-.receipt-item-fields { display: grid; grid-template-columns: minmax(0, 1fr) 104px 24px; gap: 7px; }
+.receipt-item-fields { display: grid; grid-template-columns: minmax(0, 1fr) 112px 24px; gap: 7px; }
 .receipt-item-fields input {
   width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid transparent;
   border-radius: 10px; background: var(--field); color: var(--ink); font: inherit; font-size: 0.86rem;
@@ -276,23 +276,25 @@ button { font-family: inherit; cursor: pointer; }
   min-width: 0; padding-left: 0; overflow: hidden; border-color: transparent;
   background: transparent; font-weight: 600; text-overflow: ellipsis; white-space: nowrap;
 }
-.receipt-item-amount-wrap { position: relative; }
+.receipt-item-amount-wrap { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .receipt-item-amount-wrap input {
-  padding-right: 28px; border-color: transparent; background: transparent;
+  flex: 1; min-width: 0; min-height: 28px; padding: 2px; border-color: transparent; background: transparent;
   font-family: var(--font-num); font-weight: 600; text-align: right;
+  appearance: textfield; -moz-appearance: textfield;
 }
+.receipt-item-amount-wrap input::-webkit-inner-spin-button,
+.receipt-item-amount-wrap input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .receipt-item-amount-wrap span {
-  position: absolute; top: 50%; right: 9px; transform: translateY(-50%);
-  color: var(--ink-2); font-size: 0.72rem; pointer-events: none;
+  flex: 0 0 auto; color: var(--ink-2); font-size: 0.72rem; pointer-events: none;
 }
 .receipt-item-remove {
-  display: grid; place-items: center; width: 24px; height: 40px; padding: 0;
+  display: grid; place-items: center; width: 24px; height: 28px; padding: 0;
   border: 0; background: transparent; color: var(--ink-2);
   font: inherit; font-size: 1.15rem; font-weight: 400;
 }
-.receipt-item-people { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.receipt-item-people { display: flex; align-items: center; gap: 18px; }
 .receipt-item-people button {
-  display: flex; align-items: center; min-width: 0; padding: 5px 0; overflow: hidden;
+  display: flex; align-items: center; min-width: 0; max-width: 45%; padding: 5px 0; overflow: hidden;
   border: 0; background: transparent; color: var(--ink-2);
   font: inherit; font-size: 0.78rem; font-weight: 550; text-align: left;
   text-overflow: ellipsis; white-space: nowrap;
