@@ -55,7 +55,7 @@ const TRANSLATIONS = {
     receiptReadingAmount: "Läser av beloppet…", receiptAmountFound: "Förslag: {amount} har fyllts i.",
     receiptAmountMissing: "Kunde inte hitta ett tydligt totalbelopp.", receiptAmountFailed: "Beloppet kunde inte läsas av.",
     receiptItems: "Fördela kvittot", receiptItemsHelp: "Välj vilka som ska vara med och stå för kostnaden på varje rad.",
-    addReceiptItem: "+ Lägg till rad", receiptItemName: "Produkt", receiptItemTotal: "Aktuella rader: {amount}",
+    addReceiptItem: "+ Lägg till rad", receiptItemName: "Produkt", receiptUnknownItem: "Oidentifierad produktrad", receiptItemTotal: "Aktuella rader: {amount}",
     receiptItemBelowScanned: "{amount} mindre än avläst kvittototal",
     receiptItemAboveScanned: "{amount} mer än avläst kvittototal",
     receiptItemExact: "Samma som avläst kvittototal",
@@ -99,7 +99,7 @@ const TRANSLATIONS = {
     receiptReadingAmount: "Reading the amount…", receiptAmountFound: "Suggestion: {amount} has been filled in.",
     receiptAmountMissing: "Could not find a clear total amount.", receiptAmountFailed: "The amount could not be read.",
     receiptItems: "Split receipt", receiptItemsHelp: "Choose who should share the cost of each item.",
-    addReceiptItem: "+ Add row", receiptItemName: "Item", receiptItemTotal: "Current items: {amount}",
+    addReceiptItem: "+ Add row", receiptItemName: "Item", receiptUnknownItem: "Unidentified receipt item", receiptItemTotal: "Current items: {amount}",
     receiptItemBelowScanned: "{amount} below scanned receipt total",
     receiptItemAboveScanned: "{amount} above scanned receipt total",
     receiptItemExact: "Same as scanned receipt total",
@@ -886,12 +886,70 @@ function parseReceiptAmount(value) {
   return Number.isFinite(amount) && amount > 0 && amount < 1000000 ? amount : null;
 }
 
-function guessReceiptAmount(text) {
+function normalizeReceiptOcrText(text) {
+  return String(text || "").replace(
+    /(\d)[,.]\s*([0-9oO]{1,2})(?=\D|$)/g,
+    (_, whole, decimals) => `${whole},${decimals.replace(/[oO]/g, "0").padEnd(2, "0")}`,
+  );
+}
+
+function cleanReceiptItemName(value) {
+  return value
+    .replace(/^\s*\d+\s*(?:[x×]\s*)?/i, "")
+    .replace(/^[^A-Za-zÅÄÖåäö0-9]+|[\s.:;-]+$/g, "")
+    .trim();
+}
+
+function receiptDateValue(year, month, day) {
+  const date = new Date(year, month - 1, day);
+  if (
+    year < 2000 ||
+    year > 2100 ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function guessReceiptDate(text) {
   const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const dateLabel = /\b(datum|date|köpdatum|transaction\s*date)\b/i;
+  const yearFirst = /\b(20\d{2})\s*[-/. ]\s*(\d{1,2})\s*[-/. ]\s*(\d{1,2})\b/;
+  const dayFirst = /\b(\d{1,2})\s*[-/. ]\s*(\d{1,2})\s*[-/. ]\s*(20\d{2})\b/;
+  const candidates = [];
+
+  lines.forEach((line, lineIndex) => {
+    const context = [line, lines[lineIndex + 1] || ""].join(" ");
+    const labelled = dateLabel.test(line);
+    const yearMatch = context.match(yearFirst);
+    const dayMatch = context.match(dayFirst);
+    if (yearMatch) {
+      const value = receiptDateValue(Number(yearMatch[1]), Number(yearMatch[2]), Number(yearMatch[3]));
+      if (value) candidates.push({ value, score: labelled ? 10 : 1, lineIndex });
+    }
+    if (dayMatch) {
+      const value = receiptDateValue(Number(dayMatch[3]), Number(dayMatch[2]), Number(dayMatch[1]));
+      if (value) candidates.push({ value, score: labelled ? 10 : 1, lineIndex });
+    }
+  });
+
+  candidates.sort((first, second) => second.score - first.score || first.lineIndex - second.lineIndex);
+  return candidates[0]?.value || null;
+}
+
+function guessReceiptAmount(text) {
+  const lines = normalizeReceiptOcrText(text).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const positiveWords = /\b(att\s*betala|totalt?|summa|slutsumma|belopp|amount\s*due|grand\s*total|total)\b/i;
   const negativeWords = /\b(moms|varav|vat|rabatt|discount|växel|change|delsumma|subtotal|avrundning|rounding)\b/i;
   const amountPattern = /(?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2}(?!\d)|(?:\d{1,3}(?:[ .]\d{3})+|\d+)\s*(?:kr|sek)\b/gi;
   const candidates = [];
+  const positiveLines = lines
+    .map((line, index) => positiveWords.test(line) && !negativeWords.test(line) ? index : -1)
+    .filter((index) => index >= 0);
+  const negativeLines = lines
+    .map((line, index) => negativeWords.test(line) ? index : -1)
+    .filter((index) => index >= 0);
 
   lines.forEach((line, lineIndex) => {
     const matches = [...line.matchAll(amountPattern)];
@@ -899,8 +957,20 @@ function guessReceiptAmount(text) {
       const amount = parseReceiptAmount(match[0].replace(/\s*(?:kr|sek)\b/i, ""));
       if (amount === null) return;
       let score = (lineIndex / Math.max(1, lines.length - 1)) * 3;
-      if (positiveWords.test(line)) score += 12;
-      if (negativeWords.test(line)) score -= 8;
+      const positiveDistance = positiveLines.reduce(
+        (closest, index) => lineIndex >= index ? Math.min(closest, lineIndex - index) : closest,
+        Number.POSITIVE_INFINITY,
+      );
+      const negativeDistance = negativeLines.reduce(
+        (closest, index) => lineIndex >= index ? Math.min(closest, lineIndex - index) : closest,
+        Number.POSITIVE_INFINITY,
+      );
+      if (positiveWords.test(line) && !negativeWords.test(line)) score += 18;
+      else if (positiveDistance === 1) score += 14;
+      else if (positiveDistance === 2) score += 5;
+      if (negativeWords.test(line)) score -= 24;
+      else if (negativeDistance === 1) score -= 16;
+      else if (negativeDistance === 2) score -= 6;
       if (/\b(kr|sek)\b/i.test(line)) score += 1;
       candidates.push({ amount, score, lineIndex });
     });
@@ -918,11 +988,13 @@ function guessReceiptAmount(text) {
 
 function extractReceiptItems(text, receiptTotal) {
   const excluded = /\b(total|totalt|summa|att\s*betala|subtotal|delsumma|moms|vat|varav|rabatt|discount|växel|change|avrundning|rounding|kort|card|swish|kontant|cash|org\.?nr|datum|date|tid|time)\b/i;
-  const amountAtEnd = /(?:^|\s)((?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2})\s*(?:kr|sek)?\s*$/i;
+  const amountAtEnd = /(?:^|\s)((?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2})\s*(?:kr|sek)?(?:\s*[^0-9]{0,4})$/i;
   const quantityOnly = /^\d+(?:[,.]\d+)?\s*(?:st(?:yck)?\.?\s*)?[x×]\s*(?:\d+[,.]\d{2})?$/i;
+  const amountOnly = /^((?:\d{1,3}(?:[ .]\d{3})+|\d+)[,.]\d{2})\s*(?:kr|sek)?$/i;
+  const quantityProduct = /^\d+(?:[,.]\d+)?\s*(?:st(?:yck)?\.?\s*)?[x×]\s+.*[A-Za-zÅÄÖåäö]/i;
   const seen = new Set();
-  const lines = String(text || "").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
-  return lines.flatMap((line, lineIndex) => {
+  const lines = normalizeReceiptOcrText(text).split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const items = lines.flatMap((line, lineIndex) => {
     const match = line.match(amountAtEnd);
     if (!match || excluded.test(line)) return [];
     const amount = parseReceiptAmount(match[1]);
@@ -932,19 +1004,53 @@ function extractReceiptItems(text, receiptTotal) {
       .replace(/[—–−-]+/g, " ")
       .replace(/[^\dA-Za-zÅÄÖåäö.,x×\s]/g, " ")
       .replace(/\s+/g, " ")
+      .replace(/^(\d+(?:[,.]\d+)?)\s*[x×]{1,2}$/i, "$1 x")
       .trim();
     const previousLine = lines[lineIndex - 1] || "";
     const isQuantityLine = quantityOnly.test(normalizedInlineName);
-    if (isQuantityLine && (!/[A-Za-zÅÄÖåäö]/.test(previousLine) || excluded.test(previousLine))) return [];
-    const name = isQuantityLine
-      ? previousLine.replace(/^[^A-Za-zÅÄÖåäö0-9]+|[\s.:;-]+$/g, "").trim()
-      : inlineName;
+    if (isQuantityLine) return [];
+    const name = cleanReceiptItemName(inlineName);
     if (name.length < 2 || !/[A-Za-zÅÄÖåäö]/.test(name)) return [];
     const key = `${name.toLowerCase()}-${amount}`;
     if (seen.has(key)) return [];
     seen.add(key);
     return [{ id: crypto.randomUUID(), name, amount, allocation: "even" }];
-  }).slice(0, 30);
+  });
+
+  const totalLineIndex = lines.findIndex((line) => /\b(total|totalt|att\s*betala|grand\s*total)\b/i.test(line));
+  const productArea = totalLineIndex >= 0 ? lines.slice(0, totalLineIndex + 1) : lines;
+  const separatedNames = productArea
+    .filter((line) => quantityProduct.test(line) && !amountAtEnd.test(line) && !excluded.test(line))
+    .map(cleanReceiptItemName);
+  const separatedAmounts = productArea.flatMap((line) => {
+    const match = line.match(amountOnly);
+    if (!match) return [];
+    const amount = parseReceiptAmount(match[1]);
+    return amount === null || amount === receiptTotal ? [] : [amount];
+  });
+
+  if (separatedNames.length && separatedNames.length === separatedAmounts.length) {
+    separatedNames.forEach((name, index) => {
+      const amount = separatedAmounts[index];
+      const key = `${name.toLowerCase()}-${amount}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ id: crypto.randomUUID(), name, amount, allocation: "even" });
+    });
+  }
+
+  const identifiedTotal = items.reduce((sum, item) => sum + item.amount, 0);
+  const unidentifiedAmount = receiptTotal - identifiedTotal;
+  if (items.length && unidentifiedAmount > 0.01 && unidentifiedAmount < receiptTotal) {
+    items.push({
+      id: crypto.randomUUID(),
+      name: t("receiptUnknownItem"),
+      amount: unidentifiedAmount,
+      allocation: "even",
+    });
+  }
+
+  return items.slice(0, 30);
 }
 
 function receiptItemsShare() {
@@ -1033,11 +1139,14 @@ function renderReceiptItems() {
   applyReceiptItemsSplit();
 }
 
-async function suggestAmountFromReceipt(imageData, requestId, initialAmount) {
+async function suggestAmountFromReceipt(imageData, requestId, initialAmount, initialDate) {
   showReceiptOcrStatus(t("receiptReadingAmount"), "loading");
   try {
     const Tesseract = await loadTesseract();
-    const result = await Tesseract.recognize(imageData, "swe", {
+    const result = await Tesseract.recognize(imageData, "swe+eng", {
+      preserve_interword_spaces: "1",
+      tessedit_pageseg_mode: "6",
+      user_defined_dpi: "300",
       logger: (progress) => {
         if (requestId !== receiptOcrRequest || progress.status !== "recognizing text") return;
         const percentage = Math.max(1, Math.round((progress.progress || 0) * 100));
@@ -1047,7 +1156,11 @@ async function suggestAmountFromReceipt(imageData, requestId, initialAmount) {
     if (requestId !== receiptOcrRequest) return;
     const ocrText = result?.data?.text || "";
     const suggestion = guessReceiptAmount(ocrText);
+    const suggestedDate = guessReceiptDate(ocrText);
+    const dateInput = document.getElementById("e-date");
+    if (suggestedDate && dateInput.value === initialDate) dateInput.value = suggestedDate;
     if (suggestion === null) {
+      updateEditingDirtyState();
       showReceiptOcrStatus(t("receiptAmountMissing"), "muted");
       return;
     }
@@ -1176,6 +1289,91 @@ async function imageFromFile(file) {
 
 function canvasDataUrl(canvas, quality) {
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+function estimateReceiptRotation(image) {
+  const sampleWidth = 260;
+  const sampleScale = sampleWidth / image.width;
+  const sample = document.createElement("canvas");
+  sample.width = sampleWidth;
+  sample.height = Math.max(1, Math.round(image.height * sampleScale));
+  const context = sample.getContext("2d", { willReadFrequently: true });
+  context.drawImage(image, 0, 0, sample.width, sample.height);
+  const pixels = context.getImageData(0, 0, sample.width, sample.height).data;
+  const isPaperPixel = (index) => {
+    const red = pixels[index];
+    const green = pixels[index + 1];
+    const blue = pixels[index + 2];
+    const luminance = red * 0.299 + green * 0.587 + blue * 0.114;
+    return luminance > 135 && Math.max(red, green, blue) - Math.min(red, green, blue) < 55;
+  };
+  let count = 0;
+  let sumX = 0;
+  let sumY = 0;
+  for (let y = 0; y < sample.height; y += 1) {
+    for (let x = 0; x < sample.width; x += 1) {
+      const index = (y * sample.width + x) * 4;
+      if (!isPaperPixel(index)) continue;
+      count += 1;
+      sumX += x;
+      sumY += y;
+    }
+  }
+  if (count < sample.width * sample.height * 0.03) return 0;
+  const meanX = sumX / count;
+  const meanY = sumY / count;
+  let covarianceX = 0;
+  let covarianceY = 0;
+  let covarianceXY = 0;
+  for (let y = 0; y < sample.height; y += 1) {
+    for (let x = 0; x < sample.width; x += 1) {
+      const index = (y * sample.width + x) * 4;
+      if (!isPaperPixel(index)) continue;
+      const offsetX = x - meanX;
+      const offsetY = y - meanY;
+      covarianceX += offsetX * offsetX;
+      covarianceY += offsetY * offsetY;
+      covarianceXY += offsetX * offsetY;
+    }
+  }
+  const axisDegrees = 0.5 * Math.atan2(
+    2 * covarianceXY,
+    covarianceX - covarianceY,
+  ) * 180 / Math.PI;
+  const fromVertical = axisDegrees > 0 ? axisDegrees - 90 : axisDegrees + 90;
+  const rotation = -fromVertical;
+  return Math.abs(rotation) >= 2 && Math.abs(rotation) <= 22 ? rotation : 0;
+}
+
+async function prepareReceiptForOcr(file) {
+  const image = await imageFromFile(file);
+  const maxSide = 2200;
+  const scale = Math.min(2, maxSide / Math.max(image.width, image.height));
+  const sourceWidth = Math.max(1, Math.round(image.width * scale));
+  const sourceHeight = Math.max(1, Math.round(image.height * scale));
+  const rotation = estimateReceiptRotation(image);
+  const radians = rotation * Math.PI / 180;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(
+    Math.abs(sourceWidth * Math.cos(radians)) + Math.abs(sourceHeight * Math.sin(radians)),
+  ));
+  canvas.height = Math.max(1, Math.round(
+    Math.abs(sourceWidth * Math.sin(radians)) + Math.abs(sourceHeight * Math.cos(radians)),
+  ));
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate(radians);
+  context.drawImage(
+    image,
+    -sourceWidth / 2,
+    -sourceHeight / 2,
+    sourceWidth,
+    sourceHeight,
+  );
+  image.close?.();
+  return canvasDataUrl(canvas, 0.95);
 }
 
 async function compressReceipt(file) {
@@ -1346,6 +1544,7 @@ function initApp() {
     if (!file) return;
     const requestId = ++receiptOcrRequest;
     const initialAmount = document.getElementById("e-amount").value;
+    const initialDate = document.getElementById("e-date").value;
     showReceiptError();
     showReceiptOcrStatus();
     receiptItems = [];
@@ -1353,14 +1552,17 @@ function initApp() {
     receiptScannedTotal = 0;
     renderReceiptItems();
     try {
-      const imageData = await compressReceipt(file);
+      const [imageData, ocrImageData] = await Promise.all([
+        compressReceipt(file),
+        prepareReceiptForOcr(file),
+      ]);
       clearPendingReceiptUrl();
       pendingReceiptData = imageData;
       pendingReceiptUrl = imageData;
       removeExistingReceipt = false;
       renderReceiptPreview(pendingReceiptUrl);
       updateEditingDirtyState();
-      suggestAmountFromReceipt(imageData, requestId, initialAmount);
+      suggestAmountFromReceipt(ocrImageData, requestId, initialAmount, initialDate);
     } catch (error) {
       event.target.value = "";
       showReceiptError(t(error.message === "too-large" ? "receiptTooLarge" : "receiptInvalid"));
