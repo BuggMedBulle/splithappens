@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=split-happens-59" />
+  <link rel="stylesheet" href="styles.css?v=split-happens-69" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -167,8 +167,17 @@
           </label>
 
           <label class="field date-field">
-            <span class="field-label" data-i18n="date">Datum</span>
+            <span id="date-label" class="field-label" data-i18n="date">Datum</span>
             <input id="e-date" type="date" required />
+          </label>
+
+          <label id="recurring-field" class="recurring-field">
+            <input id="e-recurring" type="checkbox" />
+            <span class="recurring-check" aria-hidden="true">✓</span>
+            <span class="recurring-copy">
+              <strong data-i18n="recurringPayment">Återkommande varje månad</strong>
+              <small data-i18n="recurringHelp">Skapas automatiskt samma dag varje månad.</small>
+            </span>
           </label>
 
           <div class="field">
@@ -217,7 +226,10 @@
 
       <!-- Historik -->
       <section class="card">
-        <h2 data-i18n="history">Historik</h2>
+        <div class="history-heading">
+          <h2 data-i18n="history">Historik</h2>
+          <input id="history-search" type="search" placeholder="Sök" aria-label="Sök i historiken" data-i18n-placeholder="searchHistory" data-i18n-aria="searchHistory" />
+        </div>
         <p class="totals" id="totals" hidden></p>
         <ul id="history-list" class="history"></ul>
         <nav id="history-pagination" class="history-pagination" aria-label="Historiksidor" data-i18n-aria="historyPages" hidden>
@@ -267,6 +279,11 @@
             <button type="button" data-theme="dark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n="darkTheme">Mörkt</span></button>
           </div>
         </div>
+        <section class="recurring-settings" aria-labelledby="recurring-settings-title">
+          <h3 id="recurring-settings-title" data-i18n="recurringPayments">Stående betalningar</h3>
+          <div id="recurring-settings-list" class="recurring-settings-list"></div>
+          <p id="recurring-settings-empty" class="recurring-settings-empty" data-i18n="noRecurringPayments">Inga stående betalningar.</p>
+        </section>
         <button type="submit" class="btn-primary" data-i18n="saveChanges">Spara ändringar</button>
       </form>
       <button id="settings-logout" class="settings-logout" type="button" data-i18n="logout">Logga ut</button>
@@ -337,6 +354,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=split-happens-66"></script>
+  <script type="module" src="app.js?v=split-happens-76"></script>
 </body>
 </html>
