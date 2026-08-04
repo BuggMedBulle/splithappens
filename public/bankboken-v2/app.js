@@ -2133,8 +2133,13 @@ async function refreshBankbookMenu(autoOpen = true) {
   const bankbooks = await loadBankbooks();
   const inviteId = pendingInviteId();
   if (bankbooks.length > 0) {
-    const bankbook = bankbooks[0];
-    if (inviteId && inviteId !== bankbook.id) {
+    const activeId = localStorage.getItem(`bankboken-active-${signedInUser.uid}`);
+    const completeBankbooks = bankbooks.filter((item) => item.memberIds.length >= 2 && peopleFromBankbook(item));
+    const bankbook = completeBankbooks.find((item) => item.id === activeId)
+      || completeBankbooks[0]
+      || bankbooks.find((item) => item.id === activeId)
+      || bankbooks[0];
+    if (inviteId && !bankbooks.some((item) => item.id === inviteId)) {
       showOnly("bankbook-screen");
       showError("bankbook-error", new Error("Kontot är redan kopplat till en annan delning."));
       return;
