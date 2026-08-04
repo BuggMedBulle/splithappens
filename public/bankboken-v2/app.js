@@ -27,8 +27,14 @@ const TRANSLATIONS = {
     closeSettings: "Stäng inställningar", balance: "Saldo", markPaid: "Markera som swishat", add: "Lägg till",
     expense: "Utgift", income: "Inkomst", description: "Beskrivning", descriptionExample: "t.ex. Matvaror ICA",
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
+    searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
+    recurringPayment: "Återkommande varje månad", recurringHelp: "Skapas automatiskt samma dag varje månad.",
+    recurringPayments: "Stående betalningar", noRecurringPayments: "Inga stående betalningar.", stopRecurring: "Avsluta", recurringBadge: "Återkommande",
+    stopRecurringConfirm: "Avsluta den stående betalningen? Redan skapade utgifter behålls.",
+    recurringEveryMonth: "{day} varje månad",
+    editRecurring: "Redigera stående betalning", recurringDate: "Betalningsdag", edit: "Redigera",
     editIncome: "Redigera inkomst", editExpense: "Redigera utgift", save: "Spara ändringar",
     allEven: "Allt är jämnt. Ingen är skyldig något.", oweSelf: "är skyldig", owesOther: "är skyldig", total: "Totalt",
     noEntries: "Inga utgifter än. Lägg till er första ovan.", noEntriesFor: "Inga utgifter för {name}.",
@@ -71,8 +77,14 @@ const TRANSLATIONS = {
     closeSettings: "Close settings", balance: "Balance", markPaid: "Mark as paid", add: "Add",
     expense: "Expense", income: "Income", description: "Description", descriptionExample: "e.g. Groceries",
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
+    searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
+    recurringPayment: "Repeat every month", recurringHelp: "Created automatically on the same day each month.",
+    recurringPayments: "Recurring payments", noRecurringPayments: "No recurring payments.", stopRecurring: "Stop", recurringBadge: "Recurring",
+    stopRecurringConfirm: "Stop this recurring payment? Existing expenses will be kept.",
+    recurringEveryMonth: "{day} every month",
+    editRecurring: "Edit recurring payment", recurringDate: "Payment day", edit: "Edit",
     editIncome: "Edit income", editExpense: "Edit expense", save: "Save changes",
     allEven: "Everything is settled. No one owes anything.", oweSelf: "owe", owesOther: "owes", total: "Total",
     noEntries: "No expenses yet. Add your first one above.", noEntriesFor: "No expenses for {name}.",
@@ -252,6 +264,18 @@ async function initStore() {
       const documentRef = await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid });
       return documentRef.id;
     },
+    async createRecurring(entry) {
+      const documentRef = fs.doc(col);
+      await fs.setDoc(documentRef, { ...entry, updatedBy: signedInUser.uid });
+      return documentRef.id;
+    },
+    async createIfMissing(id, entry) {
+      const reference = fs.doc(col, id);
+      await fs.runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(reference);
+        if (!snapshot.exists()) transaction.set(reference, { ...entry, updatedBy: signedInUser.uid });
+      });
+    },
     async update(id, entry) { await fs.updateDoc(fs.doc(col, id), { ...entry, updatedBy: signedInUser.uid }); },
     async remove(id) {
       await fs.deleteDoc(fs.doc(receipts, id));
@@ -325,9 +349,13 @@ const kr0 = (n) =>
 //  RENDER
 // ============================================================
 let ENTRIES = [];
+let RECURRING_TEMPLATES = [];
+let GENERATING_RECURRING = false;
+let EDITING_RECURRING = false;
 let CURRENT_USER = localStorage.getItem("bankboken-person");
 let APP_INITIALIZED = false;
 let HISTORY_FILTER = null;
+let HISTORY_SEARCH = "";
 let HISTORY_PAGE = 1;
 let OPEN_SWIPE_ROW = null;
 const HISTORY_PAGE_SIZE = 10;
@@ -356,7 +384,101 @@ function splitLabel(entry) {
   return "50/50";
 }
 
-function render() { renderBalance(); renderHistory(); }
+function render() { renderBalance(); renderHistory(); renderRecurringSettings(); }
+
+function nextMonthlyOccurrence(dateValue, preferredDay) {
+  const [year, month] = dateValue.split("-").map(Number);
+  const currentMonthLastDay = new Date(year, month, 0).getDate();
+  const currentMonthDay = Math.min(Number(preferredDay) || 1, currentMonthLastDay);
+  const currentMonthCandidate = `${year}-${String(month).padStart(2, "0")}-${String(currentMonthDay).padStart(2, "0")}`;
+  if (currentMonthCandidate > dateValue) return currentMonthCandidate;
+
+  const nextMonth = new Date(year, month, 1);
+  const lastDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+  const day = Math.min(Number(preferredDay) || 1, lastDay);
+  return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function recurringOrdinal(dayValue) {
+  const day = Number(dayValue) || 1;
+  if (LANGUAGE === "sv") {
+    const lastTwo = day % 100;
+    const suffix = ![11, 12].includes(lastTwo) && [1, 2].includes(day % 10) ? ":a" : ":e";
+    return `${day}${suffix}`;
+  }
+  const lastTwo = day % 100;
+  const suffix = [11, 12, 13].includes(lastTwo)
+    ? "th"
+    : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] || "th");
+  return `${day}${suffix}`;
+}
+
+async function ensureRecurringEntries(templates, existingIds) {
+  if (GENERATING_RECURRING || !store) return;
+  GENERATING_RECURRING = true;
+  try {
+    const today = todayInputValue();
+    for (const template of templates.filter((item) => item.active !== false)) {
+      const preferredDay = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
+      let occurrenceDate = template.generatedThrough
+        ? nextMonthlyOccurrence(template.generatedThrough, preferredDay)
+        : template.startDate;
+      let latestDate = template.generatedThrough || "";
+      let generated = 0;
+      while (occurrenceDate && occurrenceDate <= today && generated < 120) {
+        const occurrenceId = `recurring-${template.id}-${occurrenceDate}`;
+        const isAfterScheduleChange = !template.effectiveFrom || occurrenceDate > template.effectiveFrom;
+        if (isAfterScheduleChange && !existingIds.has(occurrenceId)) {
+          await store.createIfMissing(occurrenceId, {
+            type: "expense",
+            desc: template.desc,
+            amount: template.amount,
+            icon: template.icon || ICON_DEFAULT,
+            payer: template.payer,
+            split: template.split || "even",
+            shareA: template.shareA ?? null,
+            excludedAmount: 0,
+            ts: expenseTimestamp(occurrenceDate),
+            recurringId: template.id,
+            recurringOccurrence: occurrenceDate,
+          });
+          existingIds.add(occurrenceId);
+        }
+        latestDate = occurrenceDate;
+        occurrenceDate = nextMonthlyOccurrence(occurrenceDate, preferredDay);
+        generated += 1;
+      }
+      if (latestDate && latestDate !== template.generatedThrough) {
+        await store.update(template.id, { generatedThrough: latestDate });
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    setSync(false, t("syncFailed"));
+  } finally {
+    GENERATING_RECURRING = false;
+  }
+}
+
+function renderRecurringSettings() {
+  const list = document.getElementById("recurring-settings-list");
+  const empty = document.getElementById("recurring-settings-empty");
+  if (!list || !empty) return;
+  list.replaceChildren();
+  empty.hidden = RECURRING_TEMPLATES.length > 0;
+  RECURRING_TEMPLATES.forEach((template) => {
+    const item = document.createElement("div");
+    item.className = "recurring-settings-item";
+    item.dataset.recurringEdit = template.id;
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-label", `${t("editRecurring")}: ${template.desc}`);
+    const dayOfMonth = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
+    const schedule = t("recurringEveryMonth", { day: recurringOrdinal(dayOfMonth) });
+    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${escapeHtml(schedule)}</small></span><div class="recurring-settings-actions"><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">${t("stopRecurring")}</button></div>`;
+    list.appendChild(item);
+  });
+}
 
 function closeSwipeRow(row = OPEN_SWIPE_ROW) {
   if (!row) return;
@@ -505,11 +627,20 @@ function renderHistory() {
       <button type="button" data-filter="all">${t("total")}<b>${kr0(amounts.A + amounts.B)}</b></button>`;
   }
 
-  const visibleEntries = HISTORY_FILTER
+  let visibleEntries = HISTORY_FILTER
     ? ENTRIES.filter((entry) => entry.type !== "settlement" && entry.payer === HISTORY_FILTER)
     : ENTRIES;
+  const searchQuery = HISTORY_SEARCH.trim().toLocaleLowerCase(locale());
+  if (searchQuery) {
+    visibleEntries = visibleEntries.filter((entry) => {
+      const payerName = PEOPLE[entry.payer]?.name || "";
+      return `${entry.desc || ""} ${payerName}`.toLocaleLowerCase(locale()).includes(searchQuery);
+    });
+  }
   empty.hidden = visibleEntries.length > 0;
-  empty.textContent = HISTORY_FILTER
+  empty.textContent = searchQuery
+    ? t("noSearchResults")
+    : HISTORY_FILTER
     ? t("noEntriesFor", { name: subjectName(HISTORY_FILTER) })
     : t("noEntries");
 
@@ -552,22 +683,22 @@ function renderHistory() {
         <div class="h-ico">${e.icon || "💰"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${historyAvatar(e.payer)}<span>${t("received")} · ${splitLabel(e)}</span></div>
+          <div class="h-sub">${historyAvatar(e.payer)}<span>${splitLabel(e)}</span></div>
         </div>
         <div class="h-amt">+${kr(e.amount)}</div>`;
     } else {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
       const historyCopy = Math.abs(payerShare - e.amount) < 0.01
-        ? t("treated", { recipient: objectName(otherPersonKey(e.payer)) })
+        ? `${PEOPLE[e.payer]?.name || subjectName(e.payer)} ${t("treated", { recipient: objectName(otherPersonKey(e.payer)) })}`
         : splitLabel(e);
       li.innerHTML = `
         <div class="h-ico">${e.icon || "🧾"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${historyAvatar(e.payer)}<span>${historyCopy}</span></div>
+          <div class="h-sub">${historyAvatar(e.payer)}<span>${escapeHtml(historyCopy)}</span></div>
         </div>
-        <div class="h-amt">${kr(e.amount)}</div>`;
+        <div class="h-amt">${e.recurringId ? `<span class="recurring-mark" role="img" title="${t("recurringBadge")}" aria-label="${t("recurringBadge")}"></span>` : ""}${kr(e.amount)}</div>`;
     }
     const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
     const content = makeSwipeableRow(li, e, openEntry);
@@ -784,10 +915,18 @@ function onSplitChange(split) {
 
 function onEntryTypeChange(type) {
   const isIncome = type === "income";
-  document.getElementById("expense-heading").textContent = EDITING_ID
+  const recurringField = document.getElementById("recurring-field");
+  recurringField.hidden = isIncome || Boolean(EDITING_ID);
+  if (recurringField.hidden) document.getElementById("e-recurring").checked = false;
+  document.getElementById("expense-heading").textContent = EDITING_RECURRING
+    ? t("editRecurring")
+    : EDITING_ID
     ? t(isIncome ? "editIncome" : "editExpense")
     : t("add");
-  document.getElementById("edit-modal-title").textContent = t(isIncome ? "editIncome" : "editExpense");
+  document.getElementById("edit-modal-title").textContent = EDITING_RECURRING
+    ? t("editRecurring")
+    : t(isIncome ? "editIncome" : "editExpense");
+  document.getElementById("date-label").textContent = t(EDITING_RECURRING ? "recurringDate" : "date");
   document.getElementById("payer-label").textContent = t(isIncome ? "receivedBy" : "paidBy");
   document.getElementById("submit-label").textContent = EDITING_ID
     ? t("save")
@@ -1403,11 +1542,13 @@ function resetExpenseForm() {
   document.getElementById("expense-form-home").appendChild(form);
   document.getElementById("edit-modal").hidden = true;
   EDITING_ID = null;
+  EDITING_RECURRING = false;
   EDITING_ORIGINAL = null;
   EDITING_HAS_RECEIPT = false;
   form.reset();
   setActive("e-type", "expense");
   document.getElementById("e-date").value = todayInputValue();
+  document.getElementById("e-recurring").checked = false;
   setActive("e-payer", currentPersonName());
   setActive("e-split", "even");
   document.getElementById("e-custom-share").value = "50";
@@ -1418,6 +1559,7 @@ function resetExpenseForm() {
   document.getElementById("edit-cancel").hidden = true;
   document.getElementById("edit-delete").hidden = true;
   document.getElementById("e-receipt").value = "";
+  document.querySelector(".receipt-field").hidden = false;
   pendingReceiptData = "";
   removeExistingReceipt = false;
   receiptOcrRequest += 1;
@@ -1487,6 +1629,22 @@ async function startEditing(entry) {
       showReceiptError(t("receiptInvalid"));
     }
   }
+}
+
+async function startEditingRecurring(template) {
+  EDITING_RECURRING = true;
+  await startEditing({
+    ...template,
+    id: template.id,
+    type: "expense",
+    ts: expenseTimestamp(template.startDate || todayInputValue()),
+    hasReceipt: false,
+  });
+  document.querySelector(".receipt-field").hidden = true;
+  document.getElementById("edit-delete").hidden = true;
+  onEntryTypeChange("expense");
+  EDITING_ORIGINAL = editingFormState();
+  updateEditingDirtyState();
 }
 
 function updatePreview() {
@@ -1731,7 +1889,13 @@ function initApp() {
     if (!desc || !(amount > 0) || !date) return;
     const type = getEntryType();
     const split = getSplit();
-    const existingEntry = EDITING_ID ? ENTRIES.find((entry) => entry.id === EDITING_ID) : null;
+    const editingRecurring = EDITING_RECURRING;
+    const recurring = type === "expense" && !EDITING_ID && document.getElementById("e-recurring").checked;
+    const existingEntry = EDITING_ID
+      ? (editingRecurring
+        ? RECURRING_TEMPLATES.find((entry) => entry.id === EDITING_ID)
+        : ENTRIES.find((entry) => entry.id === EDITING_ID))
+      : null;
     const expense = {
       type, desc, amount, icon: getIcon(),
       payer: payerKey(), split,
@@ -1743,8 +1907,46 @@ function initApp() {
     submitButton.disabled = true;
     showReceiptError();
     let createdEntryId = "";
+    let createdRecurringId = "";
     try {
-      const entryId = EDITING_ID || await store.add(expense);
+      if (editingRecurring) {
+        await store.update(EDITING_ID, {
+          desc: expense.desc,
+          amount: expense.amount,
+          icon: expense.icon,
+          payer: expense.payer,
+          split: expense.split,
+          shareA: expense.shareA,
+          startDate: date,
+          dayOfMonth: Number(date.split("-")[2]),
+          effectiveFrom: todayInputValue(),
+          ts: expense.ts,
+        });
+        resetExpenseForm();
+        document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (recurring) {
+        createdRecurringId = await store.createRecurring({
+          kind: "recurringTemplate",
+          active: true,
+          interval: "monthly",
+          desc: expense.desc,
+          amount: expense.amount,
+          icon: expense.icon,
+          payer: expense.payer,
+          split: expense.split,
+          shareA: expense.shareA,
+          startDate: date,
+          generatedThrough: date,
+          dayOfMonth: Number(date.split("-")[2]),
+          ts: expense.ts,
+        });
+      }
+      const expenseToSave = createdRecurringId
+        ? { ...expense, recurringId: createdRecurringId, recurringOccurrence: date }
+        : expense;
+      const entryId = EDITING_ID || await store.add(expenseToSave);
       if (!EDITING_ID) createdEntryId = entryId;
       let hasReceipt = Boolean(existingEntry?.hasReceipt);
       if (pendingReceiptData) {
@@ -1755,7 +1957,7 @@ function initApp() {
         hasReceipt = false;
       }
       if (EDITING_ID || pendingReceiptData || removeExistingReceipt) {
-        await store.update(entryId, { ...expense, hasReceipt });
+        await store.update(entryId, { ...expenseToSave, hasReceipt });
       }
       resetExpenseForm();
       document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1764,6 +1966,13 @@ function initApp() {
       if (createdEntryId) {
         try {
           await store.remove(createdEntryId);
+        } catch (cleanupError) {
+          console.error(cleanupError);
+        }
+      }
+      if (createdRecurringId) {
+        try {
+          await store.remove(createdRecurringId);
         } catch (cleanupError) {
           console.error(cleanupError);
         }
@@ -1798,6 +2007,12 @@ function initApp() {
     if (!button) return;
     const filter = button.dataset.filter;
     HISTORY_FILTER = filter === "all" || HISTORY_FILTER === filter ? null : filter;
+    HISTORY_PAGE = 1;
+    renderHistory();
+  });
+
+  document.getElementById("history-search").addEventListener("input", (event) => {
+    HISTORY_SEARCH = event.target.value;
     HISTORY_PAGE = 1;
     renderHistory();
   });
@@ -1999,7 +2214,10 @@ async function openBankbook(bankbook) {
   localStorage.setItem(`bankboken-active-${signedInUser.uid}`, bankbook.id);
   document.querySelector(".brand").title = bankbook.name;
   ENTRIES = [];
+  RECURRING_TEMPLATES = [];
   HISTORY_FILTER = null;
+  HISTORY_SEARCH = "";
+  document.getElementById("history-search").value = "";
   HISTORY_PAGE = 1;
   if (unsubscribeEntries) unsubscribeEntries();
   await initStore();
@@ -2010,7 +2228,12 @@ async function openBankbook(bankbook) {
     updatePersonLabels();
     resetExpenseForm();
   }
-  unsubscribeEntries = store.subscribe((entries) => { ENTRIES = entries; render(); });
+  unsubscribeEntries = store.subscribe((documents) => {
+    RECURRING_TEMPLATES = documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false);
+    ENTRIES = documents.filter((item) => item.kind !== "recurringTemplate");
+    render();
+    ensureRecurringEntries(RECURRING_TEMPLATES, new Set(documents.map((item) => item.id)));
+  });
   watchActiveBankbook(bankbook.id);
   showOnly("app");
 }
@@ -2263,6 +2486,34 @@ document.getElementById("settings-theme").addEventListener("click", (event) => {
   THEME = button.dataset.theme;
   localStorage.setItem("split-happens-theme", THEME);
   applyTheme();
+});
+
+document.getElementById("recurring-settings-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-recurring-stop]");
+  if (button) {
+    if (!confirm(t("stopRecurringConfirm"))) return;
+    button.disabled = true;
+    try {
+      await store.remove(button.dataset.recurringStop);
+    } catch (error) {
+      console.error(error);
+      button.disabled = false;
+      setSync(false, t("syncFailed"));
+    }
+    return;
+  }
+  const editRow = event.target.closest("[data-recurring-edit]");
+  if (!editRow) return;
+  const template = RECURRING_TEMPLATES.find((item) => item.id === editRow.dataset.recurringEdit);
+  if (!template) return;
+  closeSettings();
+  await startEditingRecurring(template);
+});
+document.getElementById("recurring-settings-list").addEventListener("keydown", (event) => {
+  const editRow = event.target.closest("[data-recurring-edit]");
+  if (!editRow || event.target !== editRow || !["Enter", " "].includes(event.key)) return;
+  event.preventDefault();
+  editRow.click();
 });
 
 document.getElementById("settings-close").addEventListener("click", closeSettings);
