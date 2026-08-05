@@ -4,6 +4,19 @@ let PEOPLE = {
   A: { name: "Person 1", swish: "" },
   B: { name: "Person 2", swish: "" },
 };
+const MAX_MEMBERS = 10;
+const MEMBER_SLOTS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+const DEMO_MEMBERS = [
+  ["demo-flygarn", { name: "Flygarn", color: "#5c8de8", avatarMode: "letter", avatarEmoji: "", slot: "B", demo: true }],
+  ["demo-leo", { name: "Leo", color: "#f28c45", avatarMode: "letter", avatarEmoji: "", slot: "C", demo: true }],
+  ["demo-danne", { name: "Danne", color: "#e6c84f", avatarMode: "letter", avatarEmoji: "", slot: "D", demo: true }],
+  ["demo-pontus", { name: "Pontus", color: "#62b86b", avatarMode: "letter", avatarEmoji: "", slot: "E", demo: true }],
+  ["demo-malin", { name: "Malin", color: "#38b6a5", avatarMode: "letter", avatarEmoji: "", slot: "F", demo: true }],
+  ["demo-annie", { name: "Annie", color: "#4baed4", avatarMode: "letter", avatarEmoji: "", slot: "G", demo: true }],
+  ["demo-susana", { name: "Susana", color: "#9a6dd7", avatarMode: "letter", avatarEmoji: "", slot: "H", demo: true }],
+  ["demo-pau", { name: "Pau", color: "#df6da9", avatarMode: "letter", avatarEmoji: "", slot: "I", demo: true }],
+  ["demo-carro", { name: "Carro", color: "#ef5b5b", avatarMode: "letter", avatarEmoji: "", slot: "J", demo: true }],
+];
 let firebaseApp;
 let db;
 let fs;
@@ -15,13 +28,21 @@ let unsubscribeEntries;
 let unsubscribeWaitingRoom;
 let unsubscribeActiveBankbook;
 let openingBankbook = false;
+let MULTI_EXPENSE_MODE = false;
+let MULTI_SPLIT_MODE = "equal";
+let PENDING_GROUP_SETTLEMENT = null;
+let SHOW_ALL_GROUP_DEBTS = false;
 
 const TRANSLATIONS = {
   sv: {
     authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
     email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", createAccount: "Skapa ett konto",
-    forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in den andra personen",
-    inviteHelp: "Skicka länken. Den här sidan öppnar appen automatiskt så fort personen har anslutit.",
+    forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in fler personer", chooseGroup: "Välj grupp", createGroup: "+ Skapa ny grupp",
+    newGroupTitle: "Skapa ny grupp", groupName: "Gruppnamn", profileName: "Profilnamn", saveGroup: "Spara",
+    groupCreated: "Gruppen är skapad. Bjud in fler med länken:", continueToGroup: "Fortsätt till gruppen",
+    showAll: "Visa alla", hideAll: "Dölj alla",
+    groupMemberSingular: "medlem", groupMemberPlural: "medlemmar", groupPickerEmpty: "Du har inga grupper ännu. Skapa en ny eller anslut med en inbjudningslänk.",
+    inviteHelp: "Samma länk kan användas tills gruppen har tio medlemmar.",
     copyLink: "Kopiera länk", copied: "Kopierad!", share: "Dela", gotInvite: "Har du fått en inbjudan?",
     pasteInvite: "Klistra in länk eller kod", join: "Anslut", logout: "Logga ut", settings: "Inställningar",
     closeSettings: "Stäng inställningar", balance: "Saldo", markPaid: "Markera som swishat", add: "Lägg till",
@@ -30,19 +51,14 @@ const TRANSLATIONS = {
     searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
-    recurringPayment: "Återkommande varje månad", recurringHelp: "Skapas automatiskt samma dag varje månad.",
-    recurringPayments: "Stående betalningar", noRecurringPayments: "Inga stående betalningar.", stopRecurring: "Avsluta", recurringBadge: "Återkommande",
-    stopRecurringConfirm: "Avsluta den stående betalningen? Redan skapade utgifter behålls.",
-    recurringEveryMonth: "{day} varje månad",
-    editRecurring: "Redigera stående betalning", recurringDate: "Betalningsdag", edit: "Redigera",
     editIncome: "Redigera inkomst", editExpense: "Redigera utgift", save: "Spara ändringar",
     allEven: "Allt är jämnt. Ingen är skyldig något.", oweSelf: "är skyldig", owesOther: "är skyldig", total: "Totalt",
     noEntries: "Inga utgifter än. Lägg till er första ovan.", noEntriesFor: "Inga utgifter för {name}.",
-    page: "Sida {page} av {count}", settlement: "Betalning", paid: "betalade", received: "tog emot",
+    page: "Sida {page} av {count}", settlement: "Swish", settlementSearchTerms: "Swish betalning överföring", paid: "betalade", received: "tog emot",
     treated: "bjöd 💕", delete: "Ta bort", deleteEntry: "Ta bort denna post?",
     entitledAll: "{name} har rätt till hela inkomsten.", entitled: "{name} har rätt till {amount}.",
     noDebtFull: "Ingen skuld – {name} står för hela beloppet.", becomesOwed: "{name} blir skyldig {recipient} {amount}.",
-    welcomeWaiting: "Hej {name}! Väntar på den andra personen…", createAccountShort: "Skapa konto",
+    welcomeWaiting: "Hej {name}! Konfigurera er grupp.", groupMembers: "Medlemmar", groupMemberCount: "{count} av {max} platser använda", groupReadyHelp: "Nio demoprofiler visas lokalt och sparas inte.", groupFull: "Gruppen är full.", demoMember: "Demo", continueToApp: "Fortsätt till appen", createAccountShort: "Skapa konto",
     alreadyAccount: "Jag har redan ett konto", sending: "Skickar…",
     resetSent: "Ett återställningsmail har skickats. Kontrollera även skräpposten.",
     enterEmail: "Fyll i din e-postadress först.", shareInvite: "Anslut till vår delning",
@@ -70,8 +86,12 @@ const TRANSLATIONS = {
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
     email: "Email", password: "Password, at least 6 characters", login: "Log in", createAccount: "Create an account",
-    forgotPassword: "Forgot password?", inviteOther: "Invite the other person",
-    inviteHelp: "Send the link. This page opens the app automatically as soon as the other person joins.",
+    forgotPassword: "Forgot password?", inviteOther: "Invite more people", chooseGroup: "Choose group", createGroup: "+ Create new group",
+    newGroupTitle: "Create new group", groupName: "Group name", profileName: "Profile name", saveGroup: "Save",
+    groupCreated: "Your group is ready. Invite others with this link:", continueToGroup: "Continue to group",
+    showAll: "Show all", hideAll: "Hide all",
+    groupMemberSingular: "member", groupMemberPlural: "members", groupPickerEmpty: "You do not have any groups yet. Create a new one or join with an invitation link.",
+    inviteHelp: "The same link can be used until the group has ten members.",
     copyLink: "Copy link", copied: "Copied!", share: "Share", gotInvite: "Have you received an invitation?",
     pasteInvite: "Paste link or code", join: "Join", logout: "Log out", settings: "Settings",
     closeSettings: "Close settings", balance: "Balance", markPaid: "Mark as paid", add: "Add",
@@ -80,19 +100,14 @@ const TRANSLATIONS = {
     searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
-    recurringPayment: "Repeat every month", recurringHelp: "Created automatically on the same day each month.",
-    recurringPayments: "Recurring payments", noRecurringPayments: "No recurring payments.", stopRecurring: "Stop", recurringBadge: "Recurring",
-    stopRecurringConfirm: "Stop this recurring payment? Existing expenses will be kept.",
-    recurringEveryMonth: "{day} every month",
-    editRecurring: "Edit recurring payment", recurringDate: "Payment day", edit: "Edit",
     editIncome: "Edit income", editExpense: "Edit expense", save: "Save changes",
     allEven: "Everything is settled. No one owes anything.", oweSelf: "owe", owesOther: "owes", total: "Total",
     noEntries: "No expenses yet. Add your first one above.", noEntriesFor: "No expenses for {name}.",
-    page: "Page {page} of {count}", settlement: "Settlement", paid: "paid", received: "received",
+    page: "Page {page} of {count}", settlement: "Swish", settlementSearchTerms: "Swish payment settlement transfer", paid: "paid", received: "received",
     treated: "treated {recipient} 💕", delete: "Delete", deleteEntry: "Delete this entry?",
     entitledAll: "{name} is entitled to all of the income.", entitled: "{name} is entitled to {amount}.",
     noDebtFull: "No debt – {name} covers the full amount.", becomesOwed: "{name} owes {recipient} {amount}.",
-    welcomeWaiting: "Hi {name}! Waiting for the other person…", createAccountShort: "Create account",
+    welcomeWaiting: "Hi {name}! Set up your group.", groupMembers: "Members", groupMemberCount: "{count} of {max} spots used", groupReadyHelp: "Nine demo profiles are shown locally and are not saved.", groupFull: "The group is full.", demoMember: "Demo", continueToApp: "Continue to app", createAccountShort: "Create account",
     alreadyAccount: "I already have an account", sending: "Sending…",
     resetSent: "A password reset email has been sent. Please also check your spam folder.",
     enterEmail: "Enter your email address first.", shareInvite: "Join our shared expenses",
@@ -144,6 +159,8 @@ let SETTINGS_COLOR = PROFILE_COLORS[0];
 let SETTINGS_AVATAR_MODE = "letter";
 let SETTINGS_AVATAR_EMOJI = "";
 let AVATAR_MODAL_ORIGINAL = null;
+let AVATAR_TARGET = "settings";
+let CREATED_BANKBOOK = null;
 
 function validProfileColor(color) {
   return PROFILE_COLORS.includes(String(color || "").toLowerCase());
@@ -180,13 +197,35 @@ function historyAvatar(personKey) {
   return `<i class="history-person-avatar${emojiClass}" style="--profile-color:${personColor(personKey)}">${escapeHtml(personAvatar(personKey))}</i>`;
 }
 
+function profileForEntry(entry) {
+  const profiles = activeGroupProfiles();
+  return profiles.find(([uid]) => uid === entry.payerUid)
+    || profiles.find(([, profile]) => profile.slot === entry.payer)
+    || null;
+}
+
+function historyEntryAvatar(entry) {
+  const match = profileForEntry(entry);
+  if (!match) return historyAvatar(entry.payer);
+  const [, profile] = match;
+  const avatar = profileAvatar(profile, profile.name) || "?";
+  const emojiClass = profile.avatarMode === "emoji" ? " avatar-emoji" : "";
+  const color = validProfileColor(profile.color) ? profile.color : defaultProfileColor(match[0]);
+  return `<i class="history-person-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i>`;
+}
+
+function historyProfileAvatar(uid) {
+  return historyEntryAvatar({ payerUid: uid, payer: activeGroupProfiles().find(([profileUid]) => profileUid === uid)?.[1]?.slot });
+}
+
 function updateAvatarSettings() {
-  const name = document.getElementById("settings-name").value.trim();
+  const creatingGroup = AVATAR_TARGET === "create";
+  const name = document.getElementById(creatingGroup ? "create-group-profile-name" : "settings-name").value.trim();
   const emojiInput = document.getElementById("settings-avatar-emoji");
   const avatar = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI
     ? firstGrapheme(SETTINGS_AVATAR_EMOJI)
     : firstGrapheme(name).toLocaleUpperCase(locale()) || "?";
-  const trigger = document.getElementById("settings-avatar-trigger");
+  const trigger = document.getElementById(creatingGroup ? "create-group-avatar-trigger" : "settings-avatar-trigger");
   trigger.textContent = avatar;
   trigger.style.setProperty("--profile-color", SETTINGS_COLOR);
   trigger.classList.toggle("avatar-emoji", SETTINGS_AVATAR_MODE === "emoji" && Boolean(SETTINGS_AVATAR_EMOJI));
@@ -264,18 +303,6 @@ async function initStore() {
       const documentRef = await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid });
       return documentRef.id;
     },
-    async createRecurring(entry) {
-      const documentRef = fs.doc(col);
-      await fs.setDoc(documentRef, { ...entry, updatedBy: signedInUser.uid });
-      return documentRef.id;
-    },
-    async createIfMissing(id, entry) {
-      const reference = fs.doc(col, id);
-      await fs.runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(reference);
-        if (!snapshot.exists()) transaction.set(reference, { ...entry, updatedBy: signedInUser.uid });
-      });
-    },
     async update(id, entry) { await fs.updateDoc(fs.doc(col, id), { ...entry, updatedBy: signedInUser.uid }); },
     async remove(id) {
       await fs.deleteDoc(fs.doc(receipts, id));
@@ -339,6 +366,174 @@ function balanceOf(entries) {
   return Math.round(bal * 100) / 100;
 }
 
+function entryPayerUid(entry, profiles = activeGroupProfiles()) {
+  return entry.payerUid || profiles.find(([, profile]) => profile.slot === entry.payer)?.[0] || "";
+}
+
+function groupExperienceType(bankbook = activeBankbook) {
+  if (["pair", "group"].includes(bankbook?.groupType)) return bankbook.groupType;
+  if (bankbook?.demoMode === true || bankbook?.multiGroup === true) return "group";
+  return "pair";
+}
+
+function isPairExperience(bankbook = activeBankbook) {
+  return groupExperienceType(bankbook) === "pair";
+}
+
+function usesGroupExperience(bankbook = activeBankbook) {
+  return !isPairExperience(bankbook);
+}
+
+function profileUidForSlot(slot, profiles = activeGroupProfiles()) {
+  return profiles.find(([, profile]) => profile.slot === slot)?.[0] || "";
+}
+
+function applyExperienceMode(bankbook = activeBankbook) {
+  const mode = isPairExperience(bankbook) ? "pair" : "group";
+  document.documentElement.dataset.experience = mode;
+  return mode;
+}
+
+function groupBalancesForCurrent(entries) {
+  const profiles = activeGroupProfiles();
+  const profileUids = profiles.map(([uid]) => uid);
+  const balances = new Map(profileUids.filter((uid) => uid !== signedInUser.uid).map((uid) => [uid, 0]));
+
+  for (const entry of entries) {
+    const payerUid = entryPayerUid(entry, profiles);
+    if (!payerUid) continue;
+
+    if (entry.type === "settlement" && entry.payerUid && entry.recipientUid) {
+      const amount = Number(entry.amount) || 0;
+      if (entry.payerUid === signedInUser.uid) balances.set(entry.recipientUid, (balances.get(entry.recipientUid) || 0) + amount);
+      if (entry.recipientUid === signedInUser.uid) balances.set(entry.payerUid, (balances.get(entry.payerUid) || 0) - amount);
+      continue;
+    }
+
+    const participants = entry.participantUids?.length ? entry.participantUids : profileUids;
+    if (!participants.length || !participants.includes(signedInUser.uid)) continue;
+    const sharedAmount = entry.type === "expense"
+      ? Math.max(0, Number(entry.amount) - (Number(entry.excludedAmount) || 0))
+      : Number(entry.amount) || 0;
+    const share = sharedAmount / participants.length;
+    const direction = entry.type === "income" ? -1 : 1;
+
+    if (payerUid === signedInUser.uid) {
+      participants.filter((uid) => uid !== signedInUser.uid).forEach((uid) => {
+        balances.set(uid, (balances.get(uid) || 0) + share * direction);
+      });
+    } else {
+      balances.set(payerUid, (balances.get(payerUid) || 0) - share * direction);
+    }
+  }
+
+  return [...balances.entries()]
+    .map(([uid, amount]) => ({ uid, amount: Math.round(amount * 100) / 100 }))
+    .filter(({ amount }) => Math.abs(amount) >= 0.01);
+}
+
+function groupNetBalances(entries) {
+  const profiles = activeGroupProfiles();
+  const profileUids = profiles.map(([uid]) => uid);
+  const balances = new Map(profileUids.map((uid) => [uid, 0]));
+
+  for (const entry of entries) {
+    const payerUid = entryPayerUid(entry, profiles);
+    if (!payerUid || !balances.has(payerUid)) continue;
+    const amount = Number(entry.amount) || 0;
+
+    if (entry.type === "settlement") {
+      const settlementPayerUid = entry.payerUid || profileUidForSlot(entry.payer, profiles);
+      const settlementRecipientUid = entry.recipientUid || profileUidForSlot(entry.payer === "A" ? "B" : "A", profiles);
+      if (!settlementPayerUid || !settlementRecipientUid || !balances.has(settlementPayerUid) || !balances.has(settlementRecipientUid)) continue;
+      const amountCents = Math.round(amount * 100);
+      balances.set(settlementPayerUid, (balances.get(settlementPayerUid) || 0) + amountCents);
+      balances.set(settlementRecipientUid, (balances.get(settlementRecipientUid) || 0) - amountCents);
+      continue;
+    }
+
+    const participants = (entry.participantUids?.length ? entry.participantUids : [])
+      .filter((uid) => balances.has(uid));
+    if (!entry.participantUids?.length) {
+      const legacyShares = sharesOf(entry);
+      const slotShares = [
+        [profileUidForSlot("A", profiles), legacyShares.a],
+        [profileUidForSlot("B", profiles), legacyShares.b],
+      ].filter(([uid, share]) => uid && balances.has(uid) && share > 0);
+      if (!slotShares.length) continue;
+      const sharedAmount = slotShares.reduce((sum, [, share]) => sum + share, 0);
+      const sharedCents = Math.round(sharedAmount * 100);
+      const direction = entry.type === "income" ? -1 : 1;
+      balances.set(payerUid, (balances.get(payerUid) || 0) + sharedCents * direction);
+      let assignedCents = 0;
+      slotShares.forEach(([uid, share], index) => {
+        const shareCents = index === slotShares.length - 1
+          ? sharedCents - assignedCents
+          : Math.round(share * 100);
+        assignedCents += shareCents;
+        balances.set(uid, (balances.get(uid) || 0) - shareCents * direction);
+      });
+      continue;
+    }
+    if (!participants.length) continue;
+    const sharedAmount = entry.type === "expense"
+      ? Math.max(0, amount - (Number(entry.excludedAmount) || 0))
+      : amount;
+    const sharedCents = Math.round(sharedAmount * 100);
+    const baseShareCents = Math.floor(sharedCents / participants.length);
+    let remainderCents = sharedCents - (baseShareCents * participants.length);
+    const direction = entry.type === "income" ? -1 : 1;
+    balances.set(payerUid, (balances.get(payerUid) || 0) + sharedCents * direction);
+    participants.forEach((uid) => {
+      const shareCents = baseShareCents + (remainderCents > 0 ? 1 : 0);
+      remainderCents = Math.max(0, remainderCents - 1);
+      balances.set(uid, (balances.get(uid) || 0) - shareCents * direction);
+    });
+  }
+
+  return [...balances.entries()]
+    .map(([uid, cents]) => ({ uid, cents }))
+    .filter(({ cents }) => cents !== 0);
+}
+
+function optimizedSwishPlan(entries) {
+  const balances = groupNetBalances(entries);
+  if (!balances.length) return [];
+  let best = null;
+
+  function search(values, transactions) {
+    if (best && transactions.length >= best.length) return;
+    const firstIndex = values.findIndex(({ cents }) => cents !== 0);
+    if (firstIndex === -1) {
+      best = transactions.slice();
+      return;
+    }
+
+    const first = values[firstIndex];
+    const triedAmounts = new Set();
+    for (let index = firstIndex + 1; index < values.length; index += 1) {
+      const other = values[index];
+      if (!other.cents || Math.sign(other.cents) === Math.sign(first.cents) || triedAmounts.has(other.cents)) continue;
+      triedAmounts.add(other.cents);
+      const amount = Math.min(Math.abs(first.cents), Math.abs(other.cents));
+      const debtor = first.cents < 0 ? first.uid : other.uid;
+      const creditor = first.cents > 0 ? first.uid : other.uid;
+      const originalFirst = first.cents;
+      const originalOther = other.cents;
+      first.cents += first.cents < 0 ? amount : -amount;
+      other.cents += other.cents < 0 ? amount : -amount;
+      transactions.push({ fromUid: debtor, toUid: creditor, amount: amount / 100 });
+      search(values, transactions);
+      transactions.pop();
+      first.cents = originalFirst;
+      other.cents = originalOther;
+    }
+  }
+
+  search(balances.map((balance) => ({ ...balance })), []);
+  return best || [];
+}
+
 const locale = () => LANGUAGE === "en" ? "en-SE" : "sv-SE";
 const kr = (n) =>
   new Intl.NumberFormat(locale(), { style: "currency", currency: "SEK", maximumFractionDigits: 2 }).format(n);
@@ -351,7 +546,6 @@ const kr0 = (n) =>
 let ENTRIES = [];
 let RECURRING_TEMPLATES = [];
 let GENERATING_RECURRING = false;
-let EDITING_RECURRING = false;
 let CURRENT_USER = localStorage.getItem("bankboken-person");
 let APP_INITIALIZED = false;
 let HISTORY_FILTER = null;
@@ -373,6 +567,12 @@ function otherPersonKey(personKey = CURRENT_USER) {
 }
 
 function splitLabel(entry) {
+  if (entry.participantUids?.length) {
+    const count = entry.participantUids.length;
+    const label = LANGUAGE === "en" ? "Split equally" : "Dela lika";
+    const peopleLabel = LANGUAGE === "en" ? (count === 1 ? "person" : "people") : (count === 1 ? "person" : "personer");
+    return `${label} · ${count} ${peopleLabel}`;
+  }
   const leftKey = CURRENT_USER;
   const rightKey = otherPersonKey();
   const sharePercent = (personKey) => Math.round(
@@ -386,61 +586,47 @@ function splitLabel(entry) {
 
 function render() { renderBalance(); renderHistory(); renderRecurringSettings(); }
 
+function renderRecurringSettings() {
+  const section = document.getElementById("recurring-settings");
+  const list = document.getElementById("recurring-settings-list");
+  const empty = document.getElementById("recurring-settings-empty");
+  if (!section || !list || !empty) return;
+  section.hidden = !isPairExperience();
+  list.replaceChildren();
+  empty.hidden = RECURRING_TEMPLATES.length > 0;
+  RECURRING_TEMPLATES.forEach((template) => {
+    const item = document.createElement("div");
+    item.className = "recurring-settings-item";
+    const day = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
+    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${day}:e varje månad</small></span><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">Avsluta</button>`;
+    list.appendChild(item);
+  });
+}
+
 function nextMonthlyOccurrence(dateValue, preferredDay) {
   const [year, month] = dateValue.split("-").map(Number);
-  const currentMonthLastDay = new Date(year, month, 0).getDate();
-  const currentMonthDay = Math.min(Number(preferredDay) || 1, currentMonthLastDay);
-  const currentMonthCandidate = `${year}-${String(month).padStart(2, "0")}-${String(currentMonthDay).padStart(2, "0")}`;
-  if (currentMonthCandidate > dateValue) return currentMonthCandidate;
-
   const nextMonth = new Date(year, month, 1);
-  const lastDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
-  const day = Math.min(Number(preferredDay) || 1, lastDay);
+  const day = Math.min(Number(preferredDay) || 1, new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate());
   return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function recurringOrdinal(dayValue) {
-  const day = Number(dayValue) || 1;
-  if (LANGUAGE === "sv") {
-    const lastTwo = day % 100;
-    const suffix = ![11, 12].includes(lastTwo) && [1, 2].includes(day % 10) ? ":a" : ":e";
-    return `${day}${suffix}`;
-  }
-  const lastTwo = day % 100;
-  const suffix = [11, 12, 13].includes(lastTwo)
-    ? "th"
-    : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] || "th");
-  return `${day}${suffix}`;
-}
-
 async function ensureRecurringEntries(templates, existingIds) {
-  if (GENERATING_RECURRING || !store) return;
+  if (!isPairExperience() || GENERATING_RECURRING || !store) return;
   GENERATING_RECURRING = true;
   try {
     const today = todayInputValue();
-    for (const template of templates.filter((item) => item.active !== false)) {
+    for (const template of templates) {
       const preferredDay = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
-      let occurrenceDate = template.generatedThrough
-        ? nextMonthlyOccurrence(template.generatedThrough, preferredDay)
-        : template.startDate;
+      let occurrenceDate = template.generatedThrough ? nextMonthlyOccurrence(template.generatedThrough, preferredDay) : template.startDate;
       let latestDate = template.generatedThrough || "";
       let generated = 0;
       while (occurrenceDate && occurrenceDate <= today && generated < 120) {
         const occurrenceId = `recurring-${template.id}-${occurrenceDate}`;
-        const isAfterScheduleChange = !template.effectiveFrom || occurrenceDate > template.effectiveFrom;
-        if (isAfterScheduleChange && !existingIds.has(occurrenceId)) {
+        if (!existingIds.has(occurrenceId)) {
           await store.createIfMissing(occurrenceId, {
-            type: "expense",
-            desc: template.desc,
-            amount: template.amount,
-            icon: template.icon || ICON_DEFAULT,
-            payer: template.payer,
-            split: template.split || "even",
-            shareA: template.shareA ?? null,
-            excludedAmount: 0,
-            ts: expenseTimestamp(occurrenceDate),
-            recurringId: template.id,
-            recurringOccurrence: occurrenceDate,
+            type: "expense", desc: template.desc, amount: template.amount, icon: template.icon || ICON_DEFAULT,
+            payer: template.payer, split: template.split || "even", shareA: template.shareA ?? null,
+            excludedAmount: 0, ts: expenseTimestamp(occurrenceDate), recurringId: template.id, recurringOccurrence: occurrenceDate,
           });
           existingIds.add(occurrenceId);
         }
@@ -448,36 +634,10 @@ async function ensureRecurringEntries(templates, existingIds) {
         occurrenceDate = nextMonthlyOccurrence(occurrenceDate, preferredDay);
         generated += 1;
       }
-      if (latestDate && latestDate !== template.generatedThrough) {
-        await store.update(template.id, { generatedThrough: latestDate });
-      }
+      if (latestDate && latestDate !== template.generatedThrough) await store.update(template.id, { generatedThrough: latestDate });
     }
-  } catch (error) {
-    console.error(error);
-    setSync(false, t("syncFailed"));
-  } finally {
-    GENERATING_RECURRING = false;
-  }
-}
-
-function renderRecurringSettings() {
-  const list = document.getElementById("recurring-settings-list");
-  const empty = document.getElementById("recurring-settings-empty");
-  if (!list || !empty) return;
-  list.replaceChildren();
-  empty.hidden = RECURRING_TEMPLATES.length > 0;
-  RECURRING_TEMPLATES.forEach((template) => {
-    const item = document.createElement("div");
-    item.className = "recurring-settings-item";
-    item.dataset.recurringEdit = template.id;
-    item.tabIndex = 0;
-    item.setAttribute("role", "button");
-    item.setAttribute("aria-label", `${t("editRecurring")}: ${template.desc}`);
-    const dayOfMonth = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
-    const schedule = t("recurringEveryMonth", { day: recurringOrdinal(dayOfMonth) });
-    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${escapeHtml(schedule)}</small></span><div class="recurring-settings-actions"><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">${t("stopRecurring")}</button></div>`;
-    list.appendChild(item);
-  });
+  } catch (error) { console.error(error); setSync(false, t("syncFailed")); }
+  finally { GENERATING_RECURRING = false; }
 }
 
 function closeSwipeRow(row = OPEN_SWIPE_ROW) {
@@ -575,6 +735,13 @@ function makeSwipeableRow(row, entry, onOpen) {
 }
 
 function renderBalance() {
+  if (usesGroupExperience()) {
+    renderGroupBalance();
+    return;
+  }
+  document.getElementById("balance-show-all").hidden = true;
+  SHOW_ALL_GROUP_DEBTS = false;
+  document.getElementById("swish-suggestions").hidden = true;
   const bal = balanceOf(ENTRIES);
   const heading = document.getElementById("balance-heading");
   const sub = document.getElementById("balance-sub");
@@ -600,8 +767,127 @@ function renderBalance() {
   if (CURRENT_USER !== debtorKey) return;
 
   btn.hidden = false;
+  btn.querySelector("span").textContent = `${LANGUAGE === "en" ? "Swish" : "Swisha"} ${objectName(creditorKey)} ${kr(owed)}`;
   btn.dataset.payee = creditor.swish;
   btn.dataset.amount = owed.toFixed(2);
+}
+
+function renderGroupBalance() {
+  const heading = document.getElementById("balance-heading");
+  const sub = document.getElementById("balance-sub");
+  const btn = document.getElementById("settle-btn");
+  const panel = document.getElementById("settle-panel");
+  const profiles = activeGroupProfiles();
+  const plan = optimizedSwishPlan(ENTRIES);
+  const ownTransactions = plan.filter((transaction) => transaction.fromUid === signedInUser.uid || transaction.toUid === signedInUser.uid);
+  const showAllButton = document.getElementById("balance-show-all");
+  const suggestions = document.getElementById("swish-suggestions");
+
+  showAllButton.hidden = !plan.length;
+  showAllButton.setAttribute("aria-expanded", String(SHOW_ALL_GROUP_DEBTS));
+  showAllButton.querySelector("span").textContent = t(SHOW_ALL_GROUP_DEBTS ? "hideAll" : "showAll");
+
+  const renderRoutes = (defaultPlan = []) => {
+    if (SHOW_ALL_GROUP_DEBTS && plan.length) {
+      btn.hidden = true;
+      const expandedPlan = [
+        ...plan.filter((transaction) => transaction.fromUid !== signedInUser.uid),
+        ...plan.filter((transaction) => transaction.fromUid === signedInUser.uid),
+      ];
+      renderSwishSuggestions(profiles, expandedPlan);
+      return;
+    }
+    if (defaultPlan.length) {
+      renderSwishSuggestions(profiles, defaultPlan);
+      return;
+    }
+    suggestions.hidden = true;
+    suggestions.replaceChildren();
+  };
+
+  panel.hidden = true;
+  btn.hidden = true;
+  btn.disabled = false;
+  document.getElementById("swish-suggestions").hidden = true;
+  if (!ownTransactions.length) {
+    heading.textContent = kr(0);
+    sub.textContent = LANGUAGE === "en" ? "Your balance is settled." : "Ditt saldo är jämnt.";
+    renderRoutes();
+    return;
+  }
+
+  if (ownTransactions.length > 1) {
+    const net = ownTransactions.reduce((sum, transaction) => sum + (transaction.toUid === signedInUser.uid ? transaction.amount : -transaction.amount), 0);
+    const outgoingTransactions = ownTransactions.filter((transaction) => transaction.fromUid === signedInUser.uid);
+    heading.textContent = kr(net);
+    if (outgoingTransactions.length === ownTransactions.length) {
+      const recipientNames = outgoingTransactions.map((transaction) => (
+        profiles.find(([profileUid]) => profileUid === transaction.toUid)?.[1]?.name
+        || (LANGUAGE === "en" ? "another member" : "en annan medlem")
+      ));
+      const recipients = new Intl.ListFormat(locale(), { style: "long", type: "conjunction" }).format(recipientNames);
+      sub.innerHTML = `<strong>${escapeHtml(t("you"))}</strong> ${t("oweSelf")} ${escapeHtml(recipients)}`;
+    } else {
+      sub.textContent = LANGUAGE === "en" ? `You have ${ownTransactions.length} suggested settlements.` : `Du har ${ownTransactions.length} föreslagna Swishar.`;
+    }
+    renderRoutes(ownTransactions);
+    return;
+  }
+
+  const [transaction] = ownTransactions;
+  const currentUserOwes = transaction.fromUid === signedInUser.uid;
+  const otherUid = currentUserOwes ? transaction.toUid : transaction.fromUid;
+  const profile = profiles.find(([profileUid]) => profileUid === otherUid)?.[1];
+  const name = profile?.name || (LANGUAGE === "en" ? "another member" : "en annan medlem");
+  heading.textContent = kr(currentUserOwes ? -transaction.amount : transaction.amount);
+  sub.innerHTML = currentUserOwes
+    ? `<strong>${escapeHtml(t("you"))}</strong> ${t("oweSelf")} ${escapeHtml(name)}`
+    : `<strong>${escapeHtml(name)}</strong> ${t("owesOther")} ${escapeHtml(t("youObject"))}`;
+
+  if (!currentUserOwes) {
+    renderRoutes();
+    return;
+  }
+  btn.hidden = false;
+  btn.querySelector("span").textContent = `${LANGUAGE === "en" ? "Swish" : "Swisha"} ${name} ${kr(transaction.amount)}`;
+  btn.dataset.payee = profile?.swish || "";
+  btn.dataset.amount = transaction.amount.toFixed(2);
+  btn.dataset.payeeUid = otherUid;
+  renderRoutes();
+}
+
+function renderSwishSuggestions(profiles = activeGroupProfiles(), suggestedPlan = optimizedSwishPlan(ENTRIES)) {
+  const container = document.getElementById("swish-suggestions");
+  const plan = suggestedPlan;
+  container.hidden = !plan.length;
+  if (!plan.length) {
+    container.replaceChildren();
+    return;
+  }
+
+  const nameFor = (uid) => uid === signedInUser.uid
+    ? t("you")
+    : (profiles.find(([profileUid]) => profileUid === uid)?.[1]?.name || "–");
+  container.innerHTML = `
+    <div class="swish-suggestion-list">
+      ${plan.map((transaction) => {
+        const recipient = profiles.find(([uid]) => uid === transaction.toUid)?.[1];
+        const clickable = transaction.fromUid === signedInUser.uid;
+        if (clickable) {
+          const recipientName = nameFor(transaction.toUid);
+          return `
+          <button class="swish-suggestion swish-suggestion-action" type="button" data-payee="${escapeHtml(recipient?.swish || "")}" data-payee-uid="${escapeHtml(transaction.toUid)}" data-amount="${transaction.amount.toFixed(2)}">
+            <span>${LANGUAGE === "en" ? "Swish" : "Swisha"} ${escapeHtml(recipientName)} ${kr(transaction.amount)}</span>
+            <img class="swish-logo-img" src="swish-logo-secondary-dark-bg.svg" alt="Swish" />
+          </button>`;
+        }
+        return `
+        <div class="swish-suggestion swish-suggestion-incoming">
+          <div class="swish-suggestion-route"><b>${escapeHtml(nameFor(transaction.fromUid))}</b><i>→</i><b>${escapeHtml(nameFor(transaction.toUid))}</b></div>
+          <span class="swish-suggestion-amount">${kr(transaction.amount)}</span>
+        </div>`;
+      }).join("")}
+    </div>`;
 }
 
 function renderHistory() {
@@ -609,6 +895,7 @@ function renderHistory() {
   const empty = document.getElementById("history-empty");
   const totals = document.getElementById("totals");
   const pagination = document.getElementById("history-pagination");
+  const profiles = displayGroupProfiles();
   list.innerHTML = "";
 
   const hasEntries = ENTRIES.length > 0;
@@ -616,32 +903,52 @@ function renderHistory() {
   totals.classList.toggle("is-filtered", Boolean(HISTORY_FILTER));
 
   if (hasEntries) {
-    const sum = (who) =>
-      ENTRIES.filter((e) => e.type === "expense" && e.payer === who).reduce((s, e) => s + e.amount, 0);
-    const amounts = { A: sum("A"), B: sum("B") };
-    const leftKey = CURRENT_USER;
-    const rightKey = otherPersonKey();
-    totals.innerHTML = `
-      <button type="button" data-filter="${leftKey}" class="${HISTORY_FILTER === leftKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === leftKey}"><span class="total-label"><i class="profile-dot" style="--profile-color:${personColor(leftKey)}"></i>${subjectName(leftKey)}</span><b>${kr0(amounts[leftKey])}</b></button>
-      <button type="button" data-filter="${rightKey}" class="${HISTORY_FILTER === rightKey ? "active" : ""}" aria-pressed="${HISTORY_FILTER === rightKey}"><span class="total-label"><i class="profile-dot" style="--profile-color:${personColor(rightKey)}"></i>${subjectName(rightKey)}</span><b>${kr0(amounts[rightKey])}</b></button>
-      <button type="button" data-filter="all">${t("total")}<b>${kr0(amounts.A + amounts.B)}</b></button>`;
+    const payerUidFor = (entry) => entry.payerUid || profiles.find(([, profile]) => profile.slot === entry.payer)?.[0] || "";
+    const amountFor = (uid) => ENTRIES
+      .filter((entry) => entry.type === "expense" && payerUidFor(entry) === uid)
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const memberTotals = profiles.map(([uid, profile], index) => ({
+      uid,
+      profile,
+      amount: amountFor(uid),
+      color: validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length],
+    }));
+    const allAmount = memberTotals.reduce((sum, member) => sum + member.amount, 0);
+    totals.innerHTML = `${memberTotals.map(({ uid, profile, amount, color }) => `
+      <button type="button" data-filter="${escapeHtml(uid)}" class="${HISTORY_FILTER === uid ? "active" : ""}" aria-pressed="${HISTORY_FILTER === uid}"><span class="total-label"><i class="profile-dot" style="--profile-color:${color}"></i>${escapeHtml(uid === signedInUser.uid ? t("you") : profile.name)}</span><b>${kr0(amount)}</b></button>`).join("")}
+      <button type="button" data-filter="all">${t("total")}<b>${kr0(allAmount)}</b></button>`;
   }
 
   let visibleEntries = HISTORY_FILTER
-    ? ENTRIES.filter((entry) => entry.type !== "settlement" && entry.payer === HISTORY_FILTER)
+    ? ENTRIES.filter((entry) => {
+      const payerUid = entry.payerUid || profiles.find(([, profile]) => profile.slot === entry.payer)?.[0];
+      return payerUid === HISTORY_FILTER;
+    })
     : ENTRIES;
   const searchQuery = HISTORY_SEARCH.trim().toLocaleLowerCase(locale());
   if (searchQuery) {
     visibleEntries = visibleEntries.filter((entry) => {
-      const payerName = PEOPLE[entry.payer]?.name || "";
-      return `${entry.desc || ""} ${payerName}`.toLocaleLowerCase(locale()).includes(searchQuery);
+      const payerUid = entry.payerUid || profiles.find(([, profile]) => profile.slot === entry.payer)?.[0];
+      const payerName = profiles.find(([uid]) => uid === payerUid)?.[1]?.name || PEOPLE[entry.payer]?.name || "";
+      const recipientUid = entry.type === "settlement"
+        ? entry.recipientUid || profileUidForSlot(entry.payer === "A" ? "B" : "A", profiles)
+        : "";
+      const recipientName = profiles.find(([uid]) => uid === recipientUid)?.[1]?.name
+        || (entry.type === "settlement" ? PEOPLE[otherPersonKey(entry.payer)]?.name || "" : "");
+      const entryType = entry.type === "settlement"
+        ? `${t("settlementSearchTerms")} ${t("paid")}`
+        : entry.type === "income"
+        ? t("income")
+        : t("expense");
+      const searchableText = `${entry.desc || ""} ${entryType} ${payerName} ${recipientName} ${entry.amount || ""} ${kr(entry.amount || 0)}`;
+      return searchableText.toLocaleLowerCase(locale()).includes(searchQuery);
     });
   }
   empty.hidden = visibleEntries.length > 0;
   empty.textContent = searchQuery
     ? t("noSearchResults")
     : HISTORY_FILTER
-    ? t("noEntriesFor", { name: subjectName(HISTORY_FILTER) })
+    ? t("noEntriesFor", { name: profiles.find(([uid]) => uid === HISTORY_FILTER)?.[1]?.name || t("you") })
     : t("noEntries");
 
   const pageCount = Math.max(1, Math.ceil(visibleEntries.length / HISTORY_PAGE_SIZE));
@@ -667,38 +974,43 @@ function renderHistory() {
     }
 
     if (e.type === "settlement") {
-      const recipientKey = e.payer === "A" ? "B" : "A";
-      const to = objectName(recipientKey);
+      const payerUid = entryPayerUid(e, profiles);
+      const recipientUid = e.recipientUid || profileUidForSlot(e.payer === "A" ? "B" : "A", profiles);
+      const payerName = profiles.find(([uid]) => uid === payerUid)?.[1]?.name || PEOPLE[e.payer]?.name || subjectName(e.payer);
+      const recipientName = profiles.find(([uid]) => uid === recipientUid)?.[1]?.name || PEOPLE[e.payer === "A" ? "B" : "A"]?.name || "";
+      const amountSign = payerUid === signedInUser.uid ? "−" : recipientUid === signedInUser.uid ? "+" : "";
       li.className = "h-settle";
       li.innerHTML = `
-        <div class="h-ico">💸</div>
+        <div class="h-ico"><img class="swish-history-mark" src="swish-mark.svg" alt="" /></div>
         <div class="h-main">
           <div class="h-title">${t("settlement")}</div>
-          <div class="h-sub">${historyAvatar(e.payer)}<span>→ ${to}</span></div>
+          <div class="h-sub settlement-flow" aria-label="${escapeHtml(`${payerName} → ${recipientName}`)}">${historyProfileAvatar(payerUid)}<span aria-hidden="true">→</span>${historyProfileAvatar(recipientUid)}</div>
         </div>
-        <div class="h-amt">${kr(e.amount)}</div>`;
+        <div class="h-amt">${amountSign}${kr(e.amount)}</div>`;
     } else if (e.type === "income") {
       li.className = "h-income";
       li.innerHTML = `
         <div class="h-ico">${e.icon || "💰"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${historyAvatar(e.payer)}<span>${splitLabel(e)}</span></div>
+          <div class="h-sub">${historyEntryAvatar(e)}<span>${splitLabel(e)}</span></div>
         </div>
         <div class="h-amt">+${kr(e.amount)}</div>`;
     } else {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
-      const historyCopy = Math.abs(payerShare - e.amount) < 0.01
+      const historyCopy = e.participantUids?.length
+        ? splitLabel(e)
+        : Math.abs(payerShare - e.amount) < 0.01
         ? `${PEOPLE[e.payer]?.name || subjectName(e.payer)} ${t("treated", { recipient: objectName(otherPersonKey(e.payer)) })}`
         : splitLabel(e);
       li.innerHTML = `
         <div class="h-ico">${e.icon || "🧾"}</div>
         <div class="h-main">
           <div class="h-title">${escapeHtml(e.desc)}</div>
-          <div class="h-sub">${historyAvatar(e.payer)}<span>${escapeHtml(historyCopy)}</span></div>
+          <div class="h-sub">${historyEntryAvatar(e)}<span>${escapeHtml(historyCopy)}</span></div>
         </div>
-        <div class="h-amt">${e.recurringId ? `<span class="recurring-mark" role="img" title="${t("recurringBadge")}" aria-label="${t("recurringBadge")}"></span>` : ""}${kr(e.amount)}</div>`;
+        <div class="h-amt">${kr(e.amount)}</div>`;
     }
     const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
     const content = makeSwipeableRow(li, e, openEntry);
@@ -739,6 +1051,13 @@ function onSettleClick() {
   const btn = document.getElementById("settle-btn");
   if (btn.hidden) return;
   const { payee, amount } = btn.dataset;
+  if (!payee) {
+    window.alert(LANGUAGE === "en" ? "This demo profile has no Swish number." : "Demoprofilen saknar Swishnummer.");
+    return;
+  }
+  if (usesGroupExperience()) {
+    PENDING_GROUP_SETTLEMENT = { toUid: btn.dataset.payeeUid, amount: Number(amount) };
+  }
   const link = buildSwishLink(payee, amount, settlementMessage());
 
   document.getElementById("settle-panel").hidden = false;
@@ -746,6 +1065,26 @@ function onSettleClick() {
 }
 
 async function confirmSettlement() {
+  if (usesGroupExperience()) {
+    const transaction = PENDING_GROUP_SETTLEMENT
+      ? { fromUid: signedInUser.uid, toUid: PENDING_GROUP_SETTLEMENT.toUid, amount: PENDING_GROUP_SETTLEMENT.amount }
+      : optimizedSwishPlan(ENTRIES).find((item) => item.fromUid === signedInUser.uid);
+    if (!transaction) return;
+    const recipientUid = transaction.toUid;
+    const payerProfile = activeGroupProfiles().find(([uid]) => uid === signedInUser.uid)?.[1];
+    await store.add({
+      type: "settlement",
+      payer: payerProfile?.slot || CURRENT_USER,
+      payerUid: signedInUser.uid,
+      recipientUid,
+      amount: transaction.amount,
+      ts: Date.now(),
+    });
+    document.getElementById("settle-panel").hidden = true;
+    PENDING_GROUP_SETTLEMENT = null;
+    document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   const bal = balanceOf(ENTRIES);
   if (Math.abs(bal) < 0.01) return;
   const payer = bal > 0 ? "B" : "A";
@@ -848,6 +1187,52 @@ function initIconPicker() {
 function payerKey() { return getPayer(); }
 function currentPersonName() { return CURRENT_USER || "A"; }
 
+function selectedMultiParticipants() {
+  return [...document.querySelectorAll('#multi-participants input[type="checkbox"]:checked')].map((input) => input.value);
+}
+
+function setMultiSplitMode(mode) {
+  MULTI_SPLIT_MODE = mode === "custom" ? "custom" : "equal";
+  document.querySelectorAll("#e-multi-split-mode [data-multi-split]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.multiSplit === MULTI_SPLIT_MODE);
+  });
+  document.getElementById("multi-participants").hidden = MULTI_SPLIT_MODE !== "custom";
+  updateEditingDirtyState();
+}
+
+function renderMultiExpenseControls(entry = null) {
+  const profiles = displayGroupProfiles();
+  MULTI_EXPENSE_MODE = usesGroupExperience();
+  document.getElementById("e-payer").hidden = MULTI_EXPENSE_MODE;
+  document.getElementById("e-payer-multi-wrap").hidden = !MULTI_EXPENSE_MODE;
+  document.getElementById("e-split").hidden = MULTI_EXPENSE_MODE;
+  document.getElementById("custom-split").hidden = MULTI_EXPENSE_MODE || getSplit?.() !== "custom";
+  document.getElementById("multi-split").hidden = !MULTI_EXPENSE_MODE;
+  if (!MULTI_EXPENSE_MODE) return;
+
+  const payerSelect = document.getElementById("e-payer-multi");
+  payerSelect.innerHTML = profiles.map(([uid, profile]) => `<option value="${escapeHtml(uid)}">${escapeHtml(uid === signedInUser.uid ? t("you") : profile.name)}</option>`).join("");
+  payerSelect.value = entry?.payerUid && profiles.some(([uid]) => uid === entry.payerUid) ? entry.payerUid : signedInUser.uid;
+  document.getElementById("e-payer-multi-value").textContent = profiles.find(([uid]) => uid === payerSelect.value)?.[0] === signedInUser.uid
+    ? t("you")
+    : profiles.find(([uid]) => uid === payerSelect.value)?.[1]?.name || "";
+  document.getElementById("e-payer-multi-menu").innerHTML = profiles.map(([uid, profile], index) => {
+    const name = uid === signedInUser.uid ? t("you") : profile.name;
+    const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
+    const avatar = profileAvatar(profile, profile.name) || "?";
+    const emojiClass = profile.avatarMode === "emoji" ? " avatar-emoji" : "";
+    return `<button type="button" role="option" data-payer-uid="${escapeHtml(uid)}" aria-selected="${uid === payerSelect.value}"><i class="multi-payer-menu-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(name)}</span></button>`;
+  }).join("");
+
+  const savedParticipants = new Set(entry?.participantUids?.length ? entry.participantUids : profiles.map(([uid]) => uid));
+  document.getElementById("multi-participants").innerHTML = profiles.map(([uid, profile], index) => {
+    const name = uid === signedInUser.uid ? t("you") : profile.name;
+    const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
+    return `<label class="multi-participant" style="--profile-color:${color}"><input type="checkbox" value="${escapeHtml(uid)}" ${savedParticipants.has(uid) ? "checked" : ""}><span>${escapeHtml(name)}</span></label>`;
+  }).join("");
+  setMultiSplitMode(entry?.multiSplitMode || "equal");
+}
+
 function updatePersonLabels() {
   const leftKey = CURRENT_USER;
   const rightKey = otherPersonKey();
@@ -884,6 +1269,7 @@ function updatePersonLabels() {
   rightSplitButton.style.setProperty("--profile-avatar-size", PEOPLE[rightKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
   presets.append(leftSplitButton, evenButton, rightSplitButton);
   updateCustomSplitLabels();
+  renderMultiExpenseControls();
 }
 
 function customShareA() {
@@ -916,17 +1302,13 @@ function onSplitChange(split) {
 function onEntryTypeChange(type) {
   const isIncome = type === "income";
   const recurringField = document.getElementById("recurring-field");
-  recurringField.hidden = isIncome || Boolean(EDITING_ID);
+  recurringField.hidden = !isPairExperience() || isIncome || Boolean(EDITING_ID);
   if (recurringField.hidden) document.getElementById("e-recurring").checked = false;
-  document.getElementById("expense-heading").textContent = EDITING_RECURRING
-    ? t("editRecurring")
-    : EDITING_ID
+  document.getElementById("expense-heading").textContent = EDITING_ID
     ? t(isIncome ? "editIncome" : "editExpense")
     : t("add");
-  document.getElementById("edit-modal-title").textContent = EDITING_RECURRING
-    ? t("editRecurring")
-    : t(isIncome ? "editIncome" : "editExpense");
-  document.getElementById("date-label").textContent = t(EDITING_RECURRING ? "recurringDate" : "date");
+  document.getElementById("edit-modal-title").textContent = t(isIncome ? "editIncome" : "editExpense");
+  document.getElementById("date-label").textContent = t("date");
   document.getElementById("payer-label").textContent = t(isIncome ? "receivedBy" : "paidBy");
   document.getElementById("submit-label").textContent = EDITING_ID
     ? t("save")
@@ -970,6 +1352,9 @@ function editingFormState() {
     payer: getPayer(),
     split: getSplit(),
     customShare: document.getElementById("e-custom-share").value,
+    payerUid: MULTI_EXPENSE_MODE ? document.getElementById("e-payer-multi").value : "",
+    multiSplitMode: MULTI_EXPENSE_MODE ? MULTI_SPLIT_MODE : "",
+    participantUids: MULTI_EXPENSE_MODE ? selectedMultiParticipants().sort() : [],
     icon: getIcon(),
     receiptAction: pendingReceiptData ? "replace" : (removeExistingReceipt ? "remove" : "keep"),
   });
@@ -1542,13 +1927,11 @@ function resetExpenseForm() {
   document.getElementById("expense-form-home").appendChild(form);
   document.getElementById("edit-modal").hidden = true;
   EDITING_ID = null;
-  EDITING_RECURRING = false;
   EDITING_ORIGINAL = null;
   EDITING_HAS_RECEIPT = false;
   form.reset();
   setActive("e-type", "expense");
   document.getElementById("e-date").value = todayInputValue();
-  document.getElementById("e-recurring").checked = false;
   setActive("e-payer", currentPersonName());
   setActive("e-split", "even");
   document.getElementById("e-custom-share").value = "50";
@@ -1560,6 +1943,7 @@ function resetExpenseForm() {
   document.getElementById("edit-delete").hidden = true;
   document.getElementById("e-receipt").value = "";
   document.querySelector(".receipt-field").hidden = false;
+  document.getElementById("e-recurring").checked = false;
   pendingReceiptData = "";
   removeExistingReceipt = false;
   receiptOcrRequest += 1;
@@ -1571,6 +1955,7 @@ function resetExpenseForm() {
   receiptGrossAmount = 0;
   receiptScannedTotal = 0;
   renderReceiptItems();
+  renderMultiExpenseControls();
   updateCustomSplitLabels();
   setIcon(ICON_DEFAULT);
   closeIconPop();
@@ -1596,6 +1981,7 @@ async function startEditing(entry) {
     ? String(Math.round((CURRENT_USER === "A" ? 1 - entry.shareA : entry.shareA) * 100))
     : "50";
   document.getElementById("custom-split").hidden = entry.split !== "custom";
+  renderMultiExpenseControls(entry);
   pendingReceiptData = "";
   removeExistingReceipt = false;
   receiptOcrRequest += 1;
@@ -1631,22 +2017,6 @@ async function startEditing(entry) {
   }
 }
 
-async function startEditingRecurring(template) {
-  EDITING_RECURRING = true;
-  await startEditing({
-    ...template,
-    id: template.id,
-    type: "expense",
-    ts: expenseTimestamp(template.startDate || todayInputValue()),
-    hasReceipt: false,
-  });
-  document.querySelector(".receipt-field").hidden = true;
-  document.getElementById("edit-delete").hidden = true;
-  onEntryTypeChange("expense");
-  EDITING_ORIGINAL = editingFormState();
-  updateEditingDirtyState();
-}
-
 function updatePreview() {
   const amount = parseFloat(document.getElementById("e-amount").value) || 0;
   updateCustomSplitLabels();
@@ -1657,6 +2027,14 @@ function updatePreview() {
   const el = document.getElementById("split-preview");
 
   if (amount <= 0) { el.hidden = true; return; }
+  if (MULTI_EXPENSE_MODE) {
+    const participants = MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().length : selectedMultiParticipants().length;
+    el.hidden = false;
+    el.textContent = participants > 0
+      ? `Beloppet delas lika mellan ${participants} ${participants === 1 ? "person" : "personer"}.`
+      : "Välj minst en person som ska vara med på utgiften.";
+    return;
+  }
   if (type === "income") {
     const shares = sharesOf({ amount, split, shareA: customShareA() });
     const otherShare = other === "A" ? shares.a : shares.b;
@@ -1686,6 +2064,49 @@ function initApp() {
   getSplit = initSegments("e-split", (value) => {
     onSplitChange(value);
     updateEditingDirtyState();
+  });
+  document.getElementById("e-multi-split-mode").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-multi-split]");
+    if (!button) return;
+    setMultiSplitMode(button.dataset.multiSplit);
+    updatePreview();
+  });
+  document.getElementById("multi-participants").addEventListener("change", () => {
+    updatePreview();
+    updateEditingDirtyState();
+  });
+  document.getElementById("e-payer-multi").addEventListener("change", () => {
+    updatePreview();
+    updateEditingDirtyState();
+  });
+  document.getElementById("e-payer-multi-trigger").addEventListener("click", () => {
+    const menu = document.getElementById("e-payer-multi-menu");
+    const open = menu.hidden;
+    menu.hidden = !open;
+    document.getElementById("e-payer-multi-trigger").setAttribute("aria-expanded", String(open));
+  });
+  document.getElementById("e-payer-multi-menu").addEventListener("click", (event) => {
+    const option = event.target.closest("button[data-payer-uid]");
+    if (!option) return;
+    const payerSelect = document.getElementById("e-payer-multi");
+    payerSelect.value = option.dataset.payerUid;
+    document.getElementById("e-payer-multi-value").textContent = option.querySelector("span").textContent;
+    document.querySelectorAll("#e-payer-multi-menu [data-payer-uid]").forEach((button) =>
+      button.setAttribute("aria-selected", String(button === option)));
+    document.getElementById("e-payer-multi-menu").hidden = true;
+    document.getElementById("e-payer-multi-trigger").setAttribute("aria-expanded", "false");
+    payerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  document.addEventListener("click", (event) => {
+    const wrapper = document.getElementById("e-payer-multi-wrap");
+    if (wrapper.contains(event.target)) return;
+    document.getElementById("e-payer-multi-menu").hidden = true;
+    document.getElementById("e-payer-multi-trigger").setAttribute("aria-expanded", "false");
+  });
+  document.getElementById("e-payer-multi-trigger").addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    document.getElementById("e-payer-multi-menu").hidden = true;
+    event.currentTarget.setAttribute("aria-expanded", "false");
   });
   initIconPicker();
 
@@ -1889,17 +2310,33 @@ function initApp() {
     if (!desc || !(amount > 0) || !date) return;
     const type = getEntryType();
     const split = getSplit();
-    const editingRecurring = EDITING_RECURRING;
-    const recurring = type === "expense" && !EDITING_ID && document.getElementById("e-recurring").checked;
-    const existingEntry = EDITING_ID
-      ? (editingRecurring
-        ? RECURRING_TEMPLATES.find((entry) => entry.id === EDITING_ID)
-        : ENTRIES.find((entry) => entry.id === EDITING_ID))
-      : null;
+    const recurring = isPairExperience() && type === "expense" && !EDITING_ID && document.getElementById("e-recurring").checked;
+    const participantUids = MULTI_EXPENSE_MODE
+      ? (MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().map(([uid]) => uid) : selectedMultiParticipants())
+      : [];
+    if (MULTI_EXPENSE_MODE && participantUids.length === 0) {
+      showReceiptError("Välj minst en person som ska vara med på utgiften.");
+      return;
+    }
+    const payerUid = MULTI_EXPENSE_MODE ? document.getElementById("e-payer-multi").value : "";
+    const payerProfile = activeGroupProfiles().find(([uid]) => uid === payerUid)?.[1];
+    const legacyPayer = MULTI_EXPENSE_MODE && ["A", "B"].includes(payerProfile?.slot) ? payerProfile.slot : payerKey();
+    const participantSlots = MULTI_EXPENSE_MODE
+      ? participantUids.map((uid) => activeGroupProfiles().find(([memberUid]) => memberUid === uid)?.[1]?.slot).filter(Boolean)
+      : [];
+    const effectiveSplit = participantSlots.length === 1 && participantSlots[0] === "A"
+      ? "a"
+      : participantSlots.length === 1 && participantSlots[0] === "B"
+      ? "b"
+      : split;
+    const existingEntry = EDITING_ID ? ENTRIES.find((entry) => entry.id === EDITING_ID) : null;
     const expense = {
       type, desc, amount, icon: getIcon(),
-      payer: payerKey(), split,
-      shareA: split === "custom" ? customShareA() : null,
+      payer: legacyPayer, split: effectiveSplit,
+      shareA: effectiveSplit === "custom" ? customShareA() : null,
+      payerUid: payerUid || null,
+      multiSplitMode: MULTI_EXPENSE_MODE ? MULTI_SPLIT_MODE : null,
+      participantUids: MULTI_EXPENSE_MODE ? participantUids : null,
       excludedAmount: 0,
       ts: expenseTimestamp(date, existingEntry?.ts),
     };
@@ -1907,45 +2344,17 @@ function initApp() {
     submitButton.disabled = true;
     showReceiptError();
     let createdEntryId = "";
-    let createdRecurringId = "";
     try {
-      if (editingRecurring) {
-        await store.update(EDITING_ID, {
-          desc: expense.desc,
-          amount: expense.amount,
-          icon: expense.icon,
-          payer: expense.payer,
-          split: expense.split,
-          shareA: expense.shareA,
-          startDate: date,
-          dayOfMonth: Number(date.split("-")[2]),
-          effectiveFrom: todayInputValue(),
-          ts: expense.ts,
-        });
-        resetExpenseForm();
-        document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
+      let recurringId = "";
       if (recurring) {
-        createdRecurringId = await store.createRecurring({
-          kind: "recurringTemplate",
-          active: true,
-          interval: "monthly",
-          desc: expense.desc,
-          amount: expense.amount,
-          icon: expense.icon,
-          payer: expense.payer,
-          split: expense.split,
-          shareA: expense.shareA,
-          startDate: date,
-          generatedThrough: date,
-          dayOfMonth: Number(date.split("-")[2]),
-          ts: expense.ts,
+        recurringId = await store.createRecurring({
+          kind: "recurringTemplate", active: true, interval: "monthly",
+          desc: expense.desc, amount: expense.amount, icon: expense.icon,
+          payer: expense.payer, split: expense.split, shareA: expense.shareA,
+          startDate: date, generatedThrough: date, dayOfMonth: Number(date.split("-")[2]), ts: expense.ts,
         });
       }
-      const expenseToSave = createdRecurringId
-        ? { ...expense, recurringId: createdRecurringId, recurringOccurrence: date }
-        : expense;
+      const expenseToSave = recurringId ? { ...expense, recurringId, recurringOccurrence: date } : expense;
       const entryId = EDITING_ID || await store.add(expenseToSave);
       if (!EDITING_ID) createdEntryId = entryId;
       let hasReceipt = Boolean(existingEntry?.hasReceipt);
@@ -1966,13 +2375,6 @@ function initApp() {
       if (createdEntryId) {
         try {
           await store.remove(createdEntryId);
-        } catch (cleanupError) {
-          console.error(cleanupError);
-        }
-      }
-      if (createdRecurringId) {
-        try {
-          await store.remove(createdRecurringId);
         } catch (cleanupError) {
           console.error(cleanupError);
         }
@@ -2030,7 +2432,23 @@ function initApp() {
     document.getElementById("totals").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  document.getElementById("settle-btn").addEventListener("click", onSettleClick);
+document.getElementById("settle-btn").addEventListener("click", onSettleClick);
+document.getElementById("balance-show-all").addEventListener("click", () => {
+  SHOW_ALL_GROUP_DEBTS = !SHOW_ALL_GROUP_DEBTS;
+  renderGroupBalance();
+});
+document.getElementById("swish-suggestions").addEventListener("click", (event) => {
+  const button = event.target.closest(".swish-suggestion-action");
+  if (!button) return;
+  const { payee, payeeUid, amount } = button.dataset;
+  if (!payee) {
+    window.alert(LANGUAGE === "en" ? "This demo profile has no Swish number." : "Demoprofilen saknar Swishnummer.");
+    return;
+  }
+  PENDING_GROUP_SETTLEMENT = { toUid: payeeUid, amount: Number(amount) };
+  document.getElementById("settle-panel").hidden = false;
+  window.open(buildSwishLink(payee, amount, settlementMessage()), "_blank", "noopener,noreferrer");
+});
   document.getElementById("confirm-settle").addEventListener("click", confirmSettlement);
 }
 
@@ -2105,74 +2523,114 @@ function invitationUrl(bankbookId) {
   return url.toString();
 }
 
-function renderWaitingRoom(bankbook) {
+function renderGroupMembers(bankbook) {
+  const profiles = activeGroupProfiles(bankbook);
+  const realProfiles = profiles.filter(([, profile]) => !profile.demo);
+  const count = profiles.length;
+  const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
+  document.getElementById("group-member-count").textContent = t("groupMemberCount", { count, max: maxMembers });
+  document.getElementById("group-member-list").innerHTML = profiles.map(([uid, profile], index) => {
+    const name = profile.name || `Person ${index + 1}`;
+    const avatar = profileAvatar(profile, name) || name.charAt(0).toUpperCase();
+    const emojiClass = profile.avatarMode === "emoji" ? " avatar-emoji" : "";
+    const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
+    const selfLabel = uid === signedInUser.uid ? ` (${t("you")})` : "";
+    const demoLabel = profile.demo ? `<em>${t("demoMember")}</em>` : "";
+    const ownerLabel = uid === bankbook.createdBy ? `<em class="group-owner">${LANGUAGE === "en" ? "Owner" : "Ägare"}</em>` : "";
+    return `<div class="group-member${profile.demo ? " is-demo" : ""}"><i class="group-member-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(name)}${escapeHtml(selfLabel)}${ownerLabel}${demoLabel}</span></div>`;
+  }).join("");
+  const full = realProfiles.length >= maxMembers;
+  document.getElementById("invite-panel").hidden = full;
+  document.getElementById("group-status").textContent = full ? t("groupFull") : t("groupReadyHelp");
+}
+
+function activeGroupProfiles(bankbook = activeBankbook) {
+  const realProfiles = Object.entries(bankbook?.members || {});
+  const profiles = isMockTestGroup(bankbook) ? [...realProfiles, ...DEMO_MEMBERS] : realProfiles;
+  return profiles
+    .sort(([, left], [, right]) => MEMBER_SLOTS.indexOf(left.slot) - MEMBER_SLOTS.indexOf(right.slot));
+}
+
+function displayGroupProfiles(bankbook = activeBankbook) {
+  const profiles = activeGroupProfiles(bankbook);
+  const ownIndex = profiles.findIndex(([uid]) => uid === signedInUser?.uid);
+  if (ownIndex <= 0) return profiles;
+  return [profiles[ownIndex], ...profiles.slice(0, ownIndex), ...profiles.slice(ownIndex + 1)];
+}
+
+function isMockTestGroup(bankbook) {
+  return bankbook?.demoMode === true;
+}
+
+function canRenameActiveGroup(bankbook = activeBankbook) {
+  return bankbook?.createdBy === signedInUser?.uid;
+}
+
+function canDeleteActiveGroup(bankbook = activeBankbook) {
+  return canRenameActiveGroup(bankbook)
+    && (bankbook?.multiGroup === true || isMockTestGroup(bankbook));
+}
+
+function bankbookDisplayName(bankbook) {
+  return isMockTestGroup(bankbook) ? "Lehman Bros" : (bankbook?.name || "Split Happens");
+}
+
+function renderActiveGroupName(bankbook = activeBankbook) {
+  const groupName = bankbookDisplayName(bankbook);
+  document.getElementById("active-group-name").textContent = groupName;
+  document.querySelector(".brand").title = groupName;
+}
+
+function renderBankbookMenu(bankbooks) {
   showOnly("bankbook-screen");
-  document.getElementById("welcome-name").textContent = t("welcomeWaiting", { name: userProfile.name });
-  document.getElementById("invite-panel").hidden = false;
-  document.getElementById("join-bankbook-form").hidden = true;
-  document.getElementById("invite-link").value = invitationUrl(bankbook.id);
-  watchWaitingRoom(bankbook.id);
+  document.getElementById("create-group").textContent = t("createGroup");
+  document.getElementById("join-bankbook-form").hidden = false;
+  document.getElementById("bankbook-error").hidden = true;
+  document.getElementById("group-list").innerHTML = bankbooks.length ? bankbooks.map((bankbook) => {
+    const count = activeGroupProfiles(bankbook).length;
+    const memberLabel = count === 1 ? t("groupMemberSingular") : t("groupMemberPlural");
+    return `<button class="group-choice" type="button" data-bankbook-id="${escapeHtml(bankbook.id)}"><span><strong>${escapeHtml(bankbookDisplayName(bankbook))}</strong><small>${count} ${memberLabel}</small></span><b aria-hidden="true">›</b></button>`;
+  }).join("") : `<p class="empty group-list-empty">${escapeHtml(t("groupPickerEmpty"))}</p>`;
 }
 
 function watchWaitingRoom(bankbookId) {
   if (unsubscribeWaitingRoom) unsubscribeWaitingRoom();
   const reference = fs.doc(db, "bankbooks", bankbookId);
   unsubscribeWaitingRoom = fs.onSnapshot(reference, async (snapshot) => {
-    if (!snapshot.exists() || openingBankbook) return;
+    if (!snapshot.exists()) return;
     const updatedBankbook = { id: snapshot.id, ...snapshot.data() };
-    if (updatedBankbook.memberIds.length < 2 || !peopleFromBankbook(updatedBankbook)) return;
-    openingBankbook = true;
-    unsubscribeWaitingRoom();
-    unsubscribeWaitingRoom = null;
-    await openBankbook(updatedBankbook);
-    openingBankbook = false;
+    activeBankbook = updatedBankbook;
+    renderGroupMembers(updatedBankbook);
   }, (error) => showError("bankbook-error", error));
 }
 
 async function refreshBankbookMenu(autoOpen = true) {
   const bankbooks = await loadBankbooks();
   const inviteId = pendingInviteId();
-  if (bankbooks.length > 0) {
-    const activeId = localStorage.getItem(`bankboken-active-${signedInUser.uid}`);
-    const completeBankbooks = bankbooks.filter((item) => item.memberIds.length >= 2 && peopleFromBankbook(item));
-    const bankbook = completeBankbooks.find((item) => item.id === activeId)
-      || completeBankbooks[0]
-      || bankbooks.find((item) => item.id === activeId)
-      || bankbooks[0];
-    if (inviteId && !bankbooks.some((item) => item.id === inviteId)) {
-      showOnly("bankbook-screen");
-      showError("bankbook-error", new Error("Kontot är redan kopplat till en annan delning."));
-      return;
-    }
-    if (bankbook.memberIds.length === 2 && autoOpen) {
-      await openBankbook(bankbook);
-    } else {
-      renderWaitingRoom(bankbook);
-    }
-    return;
-  }
   if (inviteId) {
     document.getElementById("invite-code").value = inviteId;
     await joinBankbook(inviteId);
     return;
   }
-  const bankbook = await createAutomaticBankbook();
-  renderWaitingRoom(bankbook);
+  renderBankbookMenu(bankbooks);
 }
 
-async function createAutomaticBankbook() {
+async function createAutomaticBankbook({ groupName, profileName, color, avatarMode, avatarEmoji, groupType }) {
   const reference = fs.doc(fs.collection(db, "bankbooks"));
   const bankbook = {
-    name: "Split Happens",
+    name: groupName,
+    groupType,
+    multiGroup: groupType === "group",
+    maxMembers: groupType === "pair" ? 2 : MAX_MEMBERS,
     createdBy: signedInUser.uid,
     memberIds: [signedInUser.uid],
     members: {
       [signedInUser.uid]: {
-        name: userProfile.name,
+        name: profileName,
         swish: userProfile.swish,
-        color: userProfile.color || defaultProfileColor(signedInUser.uid),
-        avatarMode: userProfile.avatarMode || "letter",
-        avatarEmoji: userProfile.avatarEmoji || "",
+        color,
+        avatarMode,
+        avatarEmoji,
         slot: "A",
       },
     },
@@ -2183,10 +2641,15 @@ async function createAutomaticBankbook() {
 }
 
 function peopleFromBankbook(bankbook) {
-  const profiles = Object.entries(bankbook.members || {});
+  const profiles = [...activeGroupProfiles(bankbook)];
+  if (!profiles.some(([, profile]) => profile.slot === "B")) {
+    const fallback = DEMO_MEMBERS.find(([, profile]) => profile.slot === "B");
+    if (fallback) profiles.push(fallback);
+  }
   const personA = profiles.find(([, profile]) => profile.slot === "A");
   const personB = profiles.find(([, profile]) => profile.slot === "B");
   if (!personA || !personB) return null;
+  const signedInProfile = profiles.find(([uid]) => uid === signedInUser.uid);
   return {
     people: {
       A: {
@@ -2202,28 +2665,33 @@ function peopleFromBankbook(bankbook) {
         avatarEmoji: personB[1].avatarEmoji || "",
       },
     },
-    currentSlot: personA[0] === signedInUser.uid ? "A" : "B",
+    currentSlot: signedInProfile?.[1]?.slot === "B" ? "B" : "A",
   };
 }
 
 async function openBankbook(bankbook) {
   const people = peopleFromBankbook(bankbook);
-  if (!people) return renderWaitingRoom(bankbook);
+  if (!people) {
+    renderBankbookMenu(await loadBankbooks());
+    showError("bankbook-error", new Error("Gruppen saknar den profilinformation som krävs för att öppnas."));
+    return;
+  }
   if (unsubscribeWaitingRoom) {
     unsubscribeWaitingRoom();
     unsubscribeWaitingRoom = null;
   }
   activeBankbook = bankbook;
+  applyExperienceMode(bankbook);
   PEOPLE = people.people;
   CURRENT_USER = people.currentSlot;
   localStorage.setItem(`bankboken-active-${signedInUser.uid}`, bankbook.id);
-  document.querySelector(".brand").title = bankbook.name;
+  renderActiveGroupName(bankbook);
   ENTRIES = [];
-  RECURRING_TEMPLATES = [];
   HISTORY_FILTER = null;
   HISTORY_SEARCH = "";
   document.getElementById("history-search").value = "";
   HISTORY_PAGE = 1;
+  SHOW_ALL_GROUP_DEBTS = false;
   if (unsubscribeEntries) unsubscribeEntries();
   await initStore();
   if (!APP_INITIALIZED) {
@@ -2234,7 +2702,9 @@ async function openBankbook(bankbook) {
     resetExpenseForm();
   }
   unsubscribeEntries = store.subscribe((documents) => {
-    RECURRING_TEMPLATES = documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false);
+    RECURRING_TEMPLATES = isPairExperience()
+      ? documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false)
+      : [];
     ENTRIES = documents.filter((item) => item.kind !== "recurringTemplate");
     render();
     ensureRecurringEntries(RECURRING_TEMPLATES, new Set(documents.map((item) => item.id)));
@@ -2251,6 +2721,9 @@ function watchActiveBankbook(bankbookId) {
     const people = peopleFromBankbook(updatedBankbook);
     if (!people) return;
     activeBankbook = updatedBankbook;
+    applyExperienceMode(updatedBankbook);
+    renderActiveGroupName(updatedBankbook);
+    if (!document.getElementById("settings-modal").hidden) renderGroupMembers(updatedBankbook);
     PEOPLE = people.people;
     CURRENT_USER = people.currentSlot;
     if (APP_INITIALIZED) {
@@ -2350,14 +2823,16 @@ document.getElementById("auth-form").addEventListener("submit", async (event) =>
 async function joinBankbook(code) {
   const reference = fs.doc(db, "bankbooks", code);
   try {
-    const existing = await loadBankbooks();
-    if (existing.length && existing[0].id !== code) throw new Error("Kontot är redan kopplat till en annan delning.");
     await fs.runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (!snapshot.exists()) throw new Error("Inbjudningskoden finns inte.");
       const bankbook = snapshot.data();
       if (bankbook.memberIds.includes(signedInUser.uid)) return;
-      if (bankbook.memberIds.length >= 2) throw new Error("Den här delningen har redan två personer.");
+      const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
+      if (bankbook.memberIds.length >= maxMembers) throw new Error(maxMembers === 2 ? "Den här gruppen har redan två personer." : "Den här gruppen har redan tio personer.");
+      const usedSlots = new Set(Object.values(bankbook.members || {}).map((member) => member.slot));
+      const slot = MEMBER_SLOTS.find((candidate) => !usedSlots.has(candidate));
+      if (!slot) throw new Error("Det finns ingen ledig plats i gruppen.");
       transaction.update(reference, {
         memberIds: [...bankbook.memberIds, signedInUser.uid],
         members: {
@@ -2368,7 +2843,7 @@ async function joinBankbook(code) {
             color: userProfile.color || defaultProfileColor(signedInUser.uid),
             avatarMode: userProfile.avatarMode || "letter",
             avatarEmoji: userProfile.avatarEmoji || "",
-            slot: "B",
+            slot,
           },
         },
       });
@@ -2377,7 +2852,8 @@ async function joinBankbook(code) {
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete("invite");
     window.history.replaceState({}, "", cleanUrl);
-    await refreshBankbookMenu();
+    const snapshot = await fs.getDoc(reference);
+    await openBankbook({ id: snapshot.id, ...snapshot.data() });
   } catch (error) {
     showOnly("bankbook-screen");
     showError("bankbook-error", error);
@@ -2389,15 +2865,126 @@ document.getElementById("join-bankbook-form").addEventListener("submit", async (
   await joinBankbook(parseInvite(document.getElementById("invite-code").value));
 });
 
-document.getElementById("copy-invite").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(document.getElementById("invite-link").value);
-  document.getElementById("copy-invite").textContent = t("copied");
+document.getElementById("group-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-bankbook-id]");
+  if (!button) return;
+  const bankbook = (await loadBankbooks()).find((item) => item.id === button.dataset.bankbookId);
+  if (!bankbook) return;
+  if (!peopleFromBankbook(bankbook)) {
+    activeBankbook = bankbook;
+    watchWaitingRoom(bankbook.id);
+    openSettings();
+    return;
+  }
+  await openBankbook(bankbook);
 });
 
-document.getElementById("share-invite").addEventListener("click", async () => {
-  const url = document.getElementById("invite-link").value;
-  if (navigator.share) await navigator.share({ title: "Split Happens", text: t("shareInvite"), url });
-  else await navigator.clipboard.writeText(url);
+function closeCreateGroup() {
+  document.getElementById("create-group-modal").hidden = true;
+  document.getElementById("avatar-modal").hidden = true;
+  document.getElementById("create-group-error").hidden = true;
+  AVATAR_TARGET = "settings";
+}
+
+function openCreateGroup() {
+  CREATED_BANKBOOK = null;
+  AVATAR_TARGET = "create";
+  document.getElementById("create-group-name").value = "";
+  document.getElementById("create-group-profile-name").value = userProfile.name || "";
+  document.querySelectorAll("#create-group-type [data-group-type]").forEach((button) =>
+    button.classList.toggle("active", button.dataset.groupType === "pair"));
+  document.getElementById("create-group-type-help").textContent = "För två personer, inklusive stående betalningar.";
+  SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : defaultProfileColor(signedInUser.uid);
+  SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
+  SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
+  document.getElementById("create-group-form").hidden = false;
+  document.getElementById("create-group-success").hidden = true;
+  document.getElementById("create-group-error").hidden = true;
+  updateColorPicker();
+  updateAvatarSettings();
+  document.getElementById("create-group-modal").hidden = false;
+  window.setTimeout(() => document.getElementById("create-group-name").focus(), 0);
+}
+
+document.getElementById("create-group").addEventListener("click", openCreateGroup);
+document.getElementById("create-group-close").addEventListener("click", closeCreateGroup);
+document.getElementById("create-group-modal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeCreateGroup();
+});
+document.getElementById("create-group-profile-name").addEventListener("input", updateAvatarSettings);
+document.getElementById("create-group-type").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-group-type]");
+  if (!button) return;
+  document.querySelectorAll("#create-group-type [data-group-type]").forEach((option) => option.classList.toggle("active", option === button));
+  document.getElementById("create-group-type-help").textContent = button.dataset.groupType === "pair"
+    ? "För två personer, inklusive stående betalningar."
+    : "För 3–10 personer, utan stående betalningar.";
+});
+document.getElementById("create-group-avatar-trigger").addEventListener("click", () => {
+  AVATAR_TARGET = "create";
+  AVATAR_MODAL_ORIGINAL = {
+    color: SETTINGS_COLOR,
+    mode: SETTINGS_AVATAR_MODE,
+    emoji: SETTINGS_AVATAR_EMOJI,
+  };
+  document.getElementById("create-group-modal").hidden = true;
+  document.getElementById("avatar-modal").hidden = false;
+  updateColorPicker();
+});
+document.getElementById("create-group-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const groupName = document.getElementById("create-group-name").value.trim();
+  const profileName = document.getElementById("create-group-profile-name").value.trim();
+  const groupType = document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
+  if (!groupName || !profileName) return;
+  const saveButton = document.getElementById("create-group-save");
+  saveButton.disabled = true;
+  document.getElementById("create-group-error").hidden = true;
+  try {
+    const avatarMode = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI ? "emoji" : "letter";
+    CREATED_BANKBOOK = await createAutomaticBankbook({
+      groupName,
+      profileName,
+      color: SETTINGS_COLOR,
+      avatarMode,
+      avatarEmoji: avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "",
+      groupType,
+    });
+    activeBankbook = CREATED_BANKBOOK;
+    document.getElementById("create-group-invite-link").value = invitationUrl(CREATED_BANKBOOK.id);
+    document.getElementById("create-group-form").hidden = true;
+    document.getElementById("create-group-success").hidden = false;
+    renderBankbookMenu(await loadBankbooks());
+    document.getElementById("create-group-modal").hidden = false;
+  } catch (error) {
+    showError("create-group-error", error);
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+document.getElementById("create-group-copy-invite").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(document.getElementById("create-group-invite-link").value);
+  const copyButton = document.getElementById("create-group-copy-invite");
+  copyButton.setAttribute("aria-label", t("copied"));
+  copyButton.title = t("copied");
+});
+document.getElementById("create-group-continue").addEventListener("click", async () => {
+  if (!CREATED_BANKBOOK) return;
+  const bankbook = CREATED_BANKBOOK;
+  closeCreateGroup();
+  await openBankbook(bankbook);
+});
+
+document.getElementById("copy-invite").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(document.getElementById("invite-link").value);
+  const copyButton = document.getElementById("copy-invite");
+  const originalLabel = "Kopiera inbjudningslänk";
+  copyButton.setAttribute("aria-label", t("copied"));
+  copyButton.title = t("copied");
+  window.setTimeout(() => {
+    copyButton.setAttribute("aria-label", originalLabel);
+    copyButton.title = originalLabel;
+  }, 1500);
 });
 
 function closeSettings() {
@@ -2408,9 +2995,9 @@ function closeSettings() {
 
 function showSettingsFromAvatar() {
   document.getElementById("avatar-modal").hidden = true;
-  document.getElementById("settings-modal").hidden = false;
+  document.getElementById(AVATAR_TARGET === "create" ? "create-group-modal" : "settings-modal").hidden = false;
   updateAvatarSettings();
-  document.getElementById("settings-avatar-trigger").focus();
+  document.getElementById(AVATAR_TARGET === "create" ? "create-group-avatar-trigger" : "settings-avatar-trigger").focus();
 }
 
 function cancelAvatarSelection() {
@@ -2424,18 +3011,71 @@ function cancelAvatarSelection() {
   showSettingsFromAvatar();
 }
 
-document.getElementById("settings-trigger").addEventListener("click", () => {
-  document.getElementById("settings-name").value = userProfile.name;
-  SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : personColor(CURRENT_USER);
-  SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
-  SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
+function openSettings() {
+  AVATAR_TARGET = "settings";
+  const groupProfile = activeBankbook.members?.[signedInUser.uid] || userProfile;
+  document.getElementById("settings-name").value = groupProfile.name;
+  SETTINGS_COLOR = validProfileColor(groupProfile.color) ? groupProfile.color : defaultProfileColor(signedInUser.uid);
+  SETTINGS_AVATAR_MODE = groupProfile.avatarMode === "emoji" ? "emoji" : "letter";
+  SETTINGS_AVATAR_EMOJI = firstGrapheme(groupProfile.avatarEmoji || "");
   updateColorPicker();
+  document.getElementById("invite-link").value = invitationUrl(activeBankbook.id);
+  const groupManagement = document.getElementById("group-management");
+  groupManagement.hidden = !canRenameActiveGroup();
+  document.getElementById("delete-group").hidden = !canDeleteActiveGroup();
+  document.getElementById("settings-group-name").value = bankbookDisplayName(activeBankbook);
+  renderGroupMembers(activeBankbook);
   document.getElementById("settings-error").hidden = true;
   document.getElementById("settings-modal").hidden = false;
+}
+
+document.getElementById("settings-trigger").addEventListener("click", openSettings);
+
+async function deleteCollectionDocuments(collectionReference) {
+  const snapshot = await fs.getDocs(collectionReference);
+  await Promise.all(snapshot.docs.map((document) => fs.deleteDoc(document.ref)));
+}
+
+document.getElementById("delete-group").addEventListener("click", async () => {
+  if (!canDeleteActiveGroup()) return;
+  const groupName = bankbookDisplayName(activeBankbook);
+  const confirmed = window.confirm(`Ta bort gruppen ”${groupName}” och all testdata i den? Detta går inte att ångra.`);
+  if (!confirmed) return;
+  const deletedBankbookId = activeBankbook.id;
+  try {
+    await deleteCollectionDocuments(fs.collection(db, "bankbooks", deletedBankbookId, "receipts"));
+    await deleteCollectionDocuments(fs.collection(db, "bankbooks", deletedBankbookId, "entries"));
+    await fs.deleteDoc(fs.doc(db, "bankbooks", deletedBankbookId));
+    localStorage.removeItem(`bankboken-active-${signedInUser.uid}`);
+    closeSettings();
+    if (unsubscribeEntries) unsubscribeEntries();
+    if (unsubscribeActiveBankbook) unsubscribeActiveBankbook();
+    if (unsubscribeWaitingRoom) unsubscribeWaitingRoom();
+    unsubscribeEntries = null;
+    unsubscribeActiveBankbook = null;
+    unsubscribeWaitingRoom = null;
+    activeBankbook = null;
+    await refreshBankbookMenu(false);
+  } catch (error) {
+    showError("settings-error", error);
+  }
+});
+
+document.getElementById("switch-group").addEventListener("click", async () => {
+  closeSettings();
+  if (unsubscribeEntries) unsubscribeEntries();
+  if (unsubscribeActiveBankbook) unsubscribeActiveBankbook();
+  if (unsubscribeWaitingRoom) unsubscribeWaitingRoom();
+  unsubscribeEntries = null;
+  unsubscribeActiveBankbook = null;
+  unsubscribeWaitingRoom = null;
+  activeBankbook = null;
+  await refreshBankbookMenu(false);
 });
 
 document.getElementById("settings-name").addEventListener("input", updateAvatarSettings);
 document.getElementById("settings-avatar-trigger").addEventListener("click", () => {
+  AVATAR_TARGET = "settings";
   AVATAR_MODAL_ORIGINAL = {
     color: SETTINGS_COLOR,
     mode: SETTINGS_AVATAR_MODE,
@@ -2495,30 +3135,10 @@ document.getElementById("settings-theme").addEventListener("click", (event) => {
 
 document.getElementById("recurring-settings-list").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-recurring-stop]");
-  if (button) {
-    if (!confirm(t("stopRecurringConfirm"))) return;
-    button.disabled = true;
-    try {
-      await store.remove(button.dataset.recurringStop);
-    } catch (error) {
-      console.error(error);
-      button.disabled = false;
-      setSync(false, t("syncFailed"));
-    }
-    return;
-  }
-  const editRow = event.target.closest("[data-recurring-edit]");
-  if (!editRow) return;
-  const template = RECURRING_TEMPLATES.find((item) => item.id === editRow.dataset.recurringEdit);
-  if (!template) return;
-  closeSettings();
-  await startEditingRecurring(template);
-});
-document.getElementById("recurring-settings-list").addEventListener("keydown", (event) => {
-  const editRow = event.target.closest("[data-recurring-edit]");
-  if (!editRow || event.target !== editRow || !["Enter", " "].includes(event.key)) return;
-  event.preventDefault();
-  editRow.click();
+  if (!button || !confirm("Avsluta den stående betalningen? Redan skapade utgifter behålls.")) return;
+  button.disabled = true;
+  try { await store.remove(button.dataset.recurringStop); }
+  catch (error) { console.error(error); button.disabled = false; setSync(false, t("syncFailed")); }
 });
 
 document.getElementById("settings-close").addEventListener("click", closeSettings);
@@ -2531,8 +3151,8 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (event.key === "Escape" && !document.getElementById("settings-modal").hidden) closeSettings();
+  if (event.key === "Escape" && !document.getElementById("create-group-modal").hidden) closeCreateGroup();
 });
-document.getElementById("settings-logout").addEventListener("click", () => authApi.signOut(auth));
 document.getElementById("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = document.getElementById("settings-name").value.trim();
@@ -2550,27 +3170,28 @@ document.getElementById("settings-form").addEventListener("submit", async (event
         avatarEmoji,
       },
     };
-    const batch = fs.writeBatch(db);
-    batch.update(fs.doc(db, "users", signedInUser.uid), {
-      name,
-      color: SETTINGS_COLOR,
-      avatarMode,
-      avatarEmoji,
-    });
-    batch.update(fs.doc(db, "bankbooks", activeBankbook.id), { members });
-    await batch.commit();
-    userProfile = { ...userProfile, name, color: SETTINGS_COLOR, avatarMode, avatarEmoji };
-    activeBankbook = { ...activeBankbook, members };
-    PEOPLE[CURRENT_USER] = {
-      ...PEOPLE[CURRENT_USER],
-      name,
-      color: SETTINGS_COLOR,
-      avatarMode,
-      avatarEmoji,
-    };
-    updatePersonLabels();
-    updatePreview();
-    render();
+    const groupName = document.getElementById("settings-group-name").value.trim();
+    const keepDemoProfiles = isMockTestGroup(activeBankbook);
+    const groupChanges = canRenameActiveGroup() && groupName
+      ? (keepDemoProfiles
+        ? { name: groupName, multiGroup: true, demoMode: true }
+        : { name: groupName })
+      : {};
+    await fs.updateDoc(fs.doc(db, "bankbooks", activeBankbook.id), { members, ...groupChanges });
+    activeBankbook = { ...activeBankbook, members, ...groupChanges };
+    renderActiveGroupName(activeBankbook);
+    if (APP_INITIALIZED && PEOPLE[CURRENT_USER]) {
+      PEOPLE[CURRENT_USER] = {
+        ...PEOPLE[CURRENT_USER],
+        name,
+        color: SETTINGS_COLOR,
+        avatarMode,
+        avatarEmoji,
+      };
+      updatePersonLabels();
+      updatePreview();
+      render();
+    }
     closeSettings();
   } catch (error) {
     showError("settings-error", error);
@@ -2583,9 +3204,10 @@ async function initializeFirebase() {
   const appApi = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
   fs = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
   authApi = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-  firebaseApp = appApi.initializeApp(FIREBASE_CONFIG, "bankboken-v2");
+  firebaseApp = appApi.initializeApp(FIREBASE_CONFIG, "bankboken-multi");
   db = fs.getFirestore(firebaseApp);
   auth = authApi.getAuth(firebaseApp);
+  await authApi.setPersistence(auth, authApi.browserSessionPersistence);
   authApi.onAuthStateChanged(auth, async (user) => {
     signedInUser = user;
     if (!user) {
