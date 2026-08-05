@@ -706,6 +706,13 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
   font-size: clamp(2rem, 10vw, 2.8rem); font-weight: 400; letter-spacing: -0.04em;
 }
 .statistics-count { margin: 5px 0 0; color: var(--ink-3); font-size: 0.78rem; }
+.statistics-recurring-summary {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 16px; align-items: baseline;
+  margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line);
+}
+.statistics-recurring-summary > span { color: var(--ink-2); font-size: 0.84rem; font-weight: 550; }
+.statistics-recurring-summary > strong { color: var(--ink); font-family: var(--font-num); font-size: 1rem; font-weight: 600; }
+.statistics-recurring-summary > small { grid-column: 1 / -1; color: var(--ink-3); font-size: 0.72rem; }
 .statistics-section { margin-top: 24px; }
 .statistics-section h3 { margin: 0 0 14px; font-size: 1rem; }
 .statistics-breakdown { display: grid; gap: 14px; }

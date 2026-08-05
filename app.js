@@ -56,6 +56,7 @@ const TRANSLATIONS = {
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
     statistics: "Statistik", closeStatistics: "Stäng statistik", timePeriod: "Tidsperiod", thisMonth: "Denna månad", thisYear: "I år", lifetime: "Totalt", customPeriod: "Anpassad",
     fromDate: "Från", toDate: "Till", totalExpenses: "Totala utgifter", expensesPerPerson: "Utlagt per person", expensesByCategory: "Utgifter per kategori",
+    subscriptions: "Prenumerationer", subscriptionShare: "{percentage}% av utgifterna",
     statisticsCount: "{count} utgifter", statisticsCountOne: "1 utgift", statisticsNote: "Swish och inkomster ingår inte i utgiftssummorna.", noStatistics: "Inga utgifter under perioden.", otherCategory: "Övrigt",
     searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
@@ -83,7 +84,7 @@ const TRANSLATIONS = {
     groceries: "Matvaror", restaurantCafe: "Restaurang & café", accommodation: "Boende",
     beauty: "Skönhet", transport: "Transport", travelExperiences: "Resor/upplevelser",
     entertainment: "Nöjen", alcohol: "Alkohol", interior: "Inredning", clothing: "Kläder",
-    hobby: "Hobby", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Streaming",
+    hobby: "Hobby/prylar", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Media/streaming",
     receipt: "Kvitto", addReceipt: "Lägg till bild", changeReceipt: "Byt bild", removeReceipt: "Ta bort",
     receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
     receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
@@ -125,6 +126,7 @@ const TRANSLATIONS = {
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
     statistics: "Statistics", closeStatistics: "Close statistics", timePeriod: "Time period", thisMonth: "This month", thisYear: "This year", lifetime: "Lifetime", customPeriod: "Custom",
     fromDate: "From", toDate: "To", totalExpenses: "Total expenses", expensesPerPerson: "Paid per person", expensesByCategory: "Expenses by category",
+    subscriptions: "Subscriptions", subscriptionShare: "{percentage}% of expenses",
     statisticsCount: "{count} expenses", statisticsCountOne: "1 expense", statisticsNote: "Swish payments and income are excluded from expense totals.", noStatistics: "No expenses in this period.", otherCategory: "Other",
     searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
@@ -152,7 +154,7 @@ const TRANSLATIONS = {
     groceries: "Groceries", restaurantCafe: "Restaurant & café", accommodation: "Accommodation",
     beauty: "Beauty", transport: "Transport", travelExperiences: "Travel & experiences",
     entertainment: "Entertainment", alcohol: "Alcohol", interior: "Home decor", clothing: "Clothing",
-    hobby: "Hobby", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Streaming",
+    hobby: "Hobbies & gadgets", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Media & streaming",
     receipt: "Receipt", addReceipt: "Add image", changeReceipt: "Change image", removeReceipt: "Remove",
     receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
     receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
@@ -706,6 +708,10 @@ function renderStatistics() {
     return true;
   });
   const total = expenses.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+  const recurringTotal = expenses
+    .filter((entry) => Boolean(entry.recurringId))
+    .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+  const recurringPercentage = total > 0 ? Math.round((recurringTotal / total) * 100) : 0;
   const personStatistics = profiles.map(([uid, profile], index) => {
     const amount = expenses
       .filter((entry) => entryPayerUid(entry, profiles) === uid)
@@ -725,6 +731,8 @@ function renderStatistics() {
   document.getElementById("statistics-count").textContent = expenses.length === 1
     ? t("statisticsCountOne")
     : t("statisticsCount", { count: expenses.length });
+  document.getElementById("statistics-recurring-total").textContent = kr(recurringTotal);
+  document.getElementById("statistics-recurring-share").textContent = t("subscriptionShare", { percentage: recurringPercentage });
 
   let piePosition = 0;
   const pieSegments = personStatistics
