@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#efede9" />
+  <script>
+    const savedTheme = localStorage.getItem("split-happens-theme") || "system";
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = savedTheme === "dark" || (savedTheme === "system" && prefersDark) ? "dark" : "light";
+  </script>
+  <title>Split Happens – Grupprototyp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=larger-group-name-2" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
+</head>
+<body>
+  <div id="auth-screen" class="lock">
+    <div class="lock-card auth-card">
+      <h1>Split Happens</h1>
+      <p class="prototype-label">Grupprototyp · upp till 10 personer</p>
+      <p class="auth-intro" data-i18n="authIntro">Logga in för att komma åt er delning.</p>
+      <form id="auth-form" autocomplete="on">
+        <input id="auth-name" type="text" placeholder="Ditt namn" data-i18n-placeholder="yourName" autocomplete="name" hidden />
+        <input id="auth-swish" type="tel" placeholder="Swishnummer" data-i18n-placeholder="swishNumber" autocomplete="tel" hidden />
+        <input id="auth-email" type="email" placeholder="E-post" data-i18n-placeholder="email" autocomplete="email" required />
+        <input id="auth-password" type="password" placeholder="Lösenord, minst 6 tecken" data-i18n-placeholder="password" autocomplete="current-password" required minlength="6" />
+        <button id="auth-submit" type="submit" data-i18n="login">Logga in</button>
+      </form>
+      <button id="auth-mode" class="text-button" type="button" data-i18n="createAccount">Skapa ett konto</button>
+      <button id="auth-reset" class="text-button auth-reset" type="button" data-i18n="forgotPassword">Glömt lösenord?</button>
+      <p id="auth-error" class="error" hidden></p>
+      <p id="auth-success" class="success" hidden></p>
+    </div>
+  </div>
+
+  <div id="bankbook-screen" class="lock" hidden>
+    <div class="lock-card bankbook-card">
+      <h1>Split Happens</h1>
+      <div id="group-list" class="group-list"></div>
+      <button id="create-group" class="continue-group" type="button" data-i18n="createGroup">+ Skapa ny grupp</button>
+      <form id="join-bankbook-form" class="bankbook-form">
+        <h2 data-i18n="gotInvite">Har du fått en inbjudan?</h2>
+        <input id="invite-code" type="text" placeholder="Klistra in länk eller kod" data-i18n-placeholder="pasteInvite" autocapitalize="off" required />
+        <button type="submit" class="secondary-button" data-i18n="join">Anslut</button>
+      </form>
+      <p id="bankbook-error" class="error" hidden></p>
+      <button id="logout-menu" class="text-button" type="button" data-i18n="logout">Logga ut</button>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app" hidden>
+    <header class="app-head">
+      <span class="brand">Split Happens <small id="active-group-name"></small></span>
+      <div class="app-meta">
+        <button id="switch-group" type="button" aria-label="Byt grupp" title="Byt grupp"><img src="repeat.svg" alt="" /></button>
+        <button id="settings-trigger" type="button" aria-label="Inställningar" title="Inställningar" data-i18n-aria="settings" data-i18n-title="settings"><img src="settings.svg" alt="" /></button>
+        <span id="sync-dot" class="sync" title="Ansluter…" hidden></span>
+      </div>
+    </header>
+
+    <main class="stack">
+      <!-- Saldo -->
+      <section class="card" id="saldo-card">
+        <p class="eyebrow" data-i18n="balance">Saldo</p>
+        <h1 id="balance-heading">Läser in…</h1>
+        <div class="balance-sub-row">
+          <p class="sub" id="balance-sub"></p>
+          <button id="balance-show-all" class="balance-show-all" type="button" hidden>
+            <span data-i18n="showAll">Visa alla</span>
+            <img src="chevron-down.svg" alt="" />
+          </button>
+        </div>
+        <div id="swish-suggestions" class="swish-suggestions" hidden></div>
+
+        <button id="settle-btn" class="btn-swish" aria-label="Reglera med Swish" data-i18n-aria="settleSwish" hidden>
+          <span>Swisha</span>
+          <img class="swish-logo-img" src="swish-logo-secondary-dark-bg.svg" alt="Swish" />
+        </button>
+
+        <div id="settle-panel" class="settle-panel" hidden>
+          <button id="confirm-settle" class="btn-confirm-settle" type="button" data-i18n="markPaid">Markera som swishat</button>
+        </div>
+      </section>
+
+      <!-- Lägg till -->
+      <section class="card">
+        <h2 id="expense-heading" data-i18n="add">Lägg till</h2>
+        <div class="seg entry-type-picker" id="e-type">
+          <button type="button" data-val="expense" class="active" data-i18n="expense">Utgift</button>
+          <button type="button" data-val="income" data-i18n="income">Inkomst</button>
+        </div>
+        <div id="expense-form-home">
+        <form id="expense-form">
+          <div class="field">
+            <span class="field-label" data-i18n="description">Beskrivning</span>
+            <div class="desc-row">
+              <button type="button" id="icon-trigger" class="icon-trigger"
+                      aria-haspopup="true" aria-expanded="false" title="Välj kategori" data-i18n-title="chooseCategory">🧾</button>
+              <input id="e-desc" type="text" placeholder="t.ex. Matvaror ICA" data-i18n-placeholder="descriptionExample" required maxlength="60" />
+              <div id="icon-pop" class="icon-pop" hidden>
+                <button type="button" id="icon-default-option" data-icon="🧾" title="Övrigt">🧾</button>
+                <button type="button" data-icon="🛒" title="Mat" data-i18n-title="groceries">🛒</button>
+                <button type="button" data-icon="🍽️" title="Lunch eller middag" data-i18n-title="meal">🍽️</button>
+                <button type="button" data-icon="🎬" title="Bio" data-i18n-title="cinema">🎬</button>
+                <button type="button" data-icon="🍿" title="Snacks eller godis" data-i18n-title="snacks">🍿</button>
+                <button type="button" data-icon="🍷" title="Alkohol" data-i18n-title="alcohol">🍷</button>
+                <button type="button" data-icon="✈️" title="Resa" data-i18n-title="travel">✈️</button>
+                <button type="button" data-icon="🚕" title="Taxi" data-i18n-title="taxi">🚕</button>
+                <button type="button" data-icon="🏟️" title="Live-sport" data-i18n-title="liveSport">🏟️</button>
+                <button type="button" data-icon="⛽" title="Bensin" data-i18n-title="fuel">⛽</button>
+                <button type="button" data-icon="🛍️" title="Shopping" data-i18n-title="shopping">🛍️</button>
+                <button type="button" data-icon="🗺️" title="Upplevelser eller utflykter" data-i18n-title="experiences">🗺️</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field receipt-field">
+            <span class="field-label" data-i18n="receipt">Kvitto</span>
+            <input id="e-receipt" class="receipt-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+            <label for="e-receipt" class="receipt-picker">
+              <span class="receipt-picker-icon" aria-hidden="true">+</span>
+              <span data-i18n="addReceipt">Lägg till bild</span>
+            </label>
+            <div id="receipt-preview" class="receipt-preview" hidden>
+              <button id="receipt-open" class="receipt-open" type="button" aria-label="Öppna kvittot i full storlek" data-i18n-aria="openReceipt">
+                <img id="receipt-image" alt="Förhandsvisning av kvitto" data-i18n-alt="receiptPreview" />
+                <span class="receipt-zoom" aria-hidden="true">
+                  <img src="zoom-in.svg" alt="" />
+                </span>
+              </button>
+              <div class="receipt-preview-actions">
+                <label for="e-receipt" class="receipt-change" data-i18n="changeReceipt">Byt bild</label>
+                <button id="receipt-remove" type="button" data-i18n="removeReceipt">Ta bort</button>
+              </div>
+            </div>
+            <p id="receipt-error" class="receipt-error" hidden></p>
+            <p id="receipt-ocr-status" class="receipt-ocr-status" aria-live="polite" hidden></p>
+            <div id="receipt-items" class="receipt-items" hidden>
+              <div class="receipt-items-head">
+                <div>
+                  <span class="receipt-items-title">
+                    <strong data-i18n="receiptItems">Fördela kvittot</strong>
+                    <span class="beta-label">BETA</span>
+                  </span>
+                  <span data-i18n="receiptItemsHelp">Välj vilka som ska vara med och stå för kostnaden på varje rad.</span>
+                </div>
+                <button id="receipt-items-close" class="receipt-items-close" type="button" aria-label="Ta bort kvittodelningen" data-i18n-aria="removeReceiptItems">×</button>
+              </div>
+              <div id="receipt-items-list" class="receipt-items-list"></div>
+              <button id="receipt-item-add" class="receipt-item-add" type="button" data-i18n="addReceiptItem">+ Lägg till rad</button>
+              <div class="receipt-items-summary">
+                <span id="receipt-items-total"></span>
+                <span id="receipt-items-difference"></span>
+              </div>
+            </div>
+          </div>
+
+          <label class="field">
+            <span class="field-label" data-i18n="amount">Belopp</span>
+            <div class="input-wrap">
+              <input id="e-amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0" required />
+              <span class="suffix" data-i18n="currencySuffix">kr</span>
+            </div>
+          </label>
+
+          <label class="field date-field">
+            <span id="date-label" class="field-label" data-i18n="date">Datum</span>
+            <input id="e-date" type="date" required />
+          </label>
+
+
+          <div class="field">
+            <span class="field-label" id="payer-label">Betalat av</span>
+            <div class="seg" id="e-payer">
+              <button type="button" data-val="A" class="active">Person 1</button>
+              <button type="button" data-val="B">Person 2</button>
+            </div>
+            <div id="e-payer-multi-wrap" class="multi-payer-select-wrap" hidden>
+              <select id="e-payer-multi" hidden aria-label="Betalat av"></select>
+              <button id="e-payer-multi-trigger" class="multi-payer-select" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="e-payer-multi-value"></span>
+              </button>
+              <div id="e-payer-multi-menu" class="multi-payer-menu" role="listbox" hidden></div>
+            </div>
+          </div>
+
+          <div class="field" id="split-field">
+            <span class="field-label" data-i18n="split">Delning</span>
+            <div class="split-picker" id="e-split">
+              <div class="seg split-presets">
+                <button type="button" data-val="a">Person 1</button>
+                <button type="button" data-val="even" class="active">50 / 50</button>
+                <button type="button" data-val="b">Person 2</button>
+              </div>
+              <button type="button" class="custom-split-button" data-val="custom" data-i18n="custom">Anpassad</button>
+            </div>
+            <div id="custom-split" class="custom-split" hidden>
+              <div class="custom-split-labels">
+                <span class="custom-split-label">
+                  <strong id="custom-a-name">Helo</strong>
+                  <span id="custom-a-value">50% · 0,00 kr</span>
+                </span>
+                <span class="custom-split-label custom-split-label-right">
+                  <strong id="custom-b-name">Halvis</strong>
+                  <span id="custom-b-value">50% · 0,00 kr</span>
+                </span>
+              </div>
+              <input id="e-custom-share" type="range" min="0" max="100" step="1" value="50" aria-label="Halvis andel" />
+            </div>
+            <div id="multi-split" class="multi-split" hidden>
+              <div class="seg" id="e-multi-split-mode">
+                <button type="button" data-multi-split="equal" class="active">Dela lika</button>
+                <button type="button" data-multi-split="custom">Anpassad</button>
+              </div>
+              <div id="multi-participants" class="multi-participants" hidden></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary"><span class="btn-icon" id="submit-icon" aria-hidden="true">+</span><span id="submit-label">Lägg till utgift</span></button>
+            <button type="button" class="edit-action edit-cancel" id="edit-cancel" aria-label="Avbryt redigering" title="Avbryt redigering" data-i18n-aria="cancelEditing" data-i18n-title="cancelEditing" hidden><img src="modal-close.svg" alt="" /></button>
+            <button type="button" class="edit-action edit-delete" id="edit-delete" aria-label="Ta bort utlägg" title="Ta bort utlägg" data-i18n-aria="deleteExpense" data-i18n-title="deleteExpense" hidden><img src="trash.svg" alt="" /></button>
+          </div>
+
+          <p class="preview" id="split-preview" hidden></p>
+        </form>
+        </div>
+      </section>
+
+      <!-- Historik -->
+      <section class="card">
+        <div class="history-heading">
+          <h2 data-i18n="history">Historik</h2>
+          <label class="history-search-control">
+            <span class="history-search-icon" aria-hidden="true"></span>
+            <input id="history-search" type="search" aria-label="Sök i historiken" data-i18n-aria="searchHistory" />
+          </label>
+        </div>
+        <p class="totals" id="totals" hidden></p>
+        <ul id="history-list" class="history"></ul>
+        <nav id="history-pagination" class="history-pagination" aria-label="Historiksidor" data-i18n-aria="historyPages" hidden>
+          <button type="button" id="history-prev" aria-label="Föregående sida" data-i18n-aria="previousPage">←</button>
+          <span id="history-page-status"></span>
+          <button type="button" id="history-next" aria-label="Nästa sida" data-i18n-aria="nextPage">→</button>
+        </nav>
+        <p id="history-empty" class="empty">Inga utgifter än. Lägg till er första ovan.</p>
+      </section>
+    </main>
+  </div>
+
+  <div id="edit-modal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" hidden>
+    <div class="edit-modal-card">
+      <h2 id="edit-modal-title">Redigera utgift</h2>
+      <div id="edit-form-modal"></div>
+    </div>
+  </div>
+
+  <div id="create-group-modal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="create-group-title" hidden>
+    <div class="edit-modal-card create-group-card">
+      <button id="create-group-close" class="settings-close" type="button" aria-label="Stäng" data-i18n-aria="cancel"><img src="modal-close.svg" alt="" /></button>
+      <h2 id="create-group-title" data-i18n="newGroupTitle">Skapa ny grupp</h2>
+      <form id="create-group-form">
+        <label class="field">
+          <span class="field-label" data-i18n="groupName">Gruppnamn</span>
+          <input id="create-group-name" type="text" maxlength="60" required autocomplete="off" />
+        </label>
+        <div class="settings-identity-row">
+          <div class="field settings-avatar-field">
+            <span class="field-label" data-i18n="avatar">Avatar</span>
+            <button id="create-group-avatar-trigger" class="settings-avatar-trigger" type="button" aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Anpassa avatar" data-i18n-aria="customizeAvatar">J</button>
+          </div>
+          <label class="field settings-name-field">
+            <span class="field-label" data-i18n="profileName">Profilnamn</span>
+            <input id="create-group-profile-name" type="text" maxlength="40" required autocomplete="name" />
+          </label>
+        </div>
+        <button id="create-group-save" type="submit" class="btn-primary" data-i18n="saveGroup">Spara</button>
+      </form>
+      <section id="create-group-success" class="create-group-success" hidden>
+        <p data-i18n="groupCreated">Gruppen är skapad. Bjud in fler med länken:</p>
+        <span class="invite-link-control">
+          <input id="create-group-invite-link" type="text" readonly aria-label="Inbjudningslänk" data-i18n-aria="inviteLink" />
+          <button id="create-group-copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk"><img src="copy.svg" alt="" /></button>
+        </span>
+        <button id="create-group-continue" type="button" class="btn-primary" data-i18n="continueToGroup">Fortsätt till gruppen</button>
+      </section>
+      <p id="create-group-error" class="error" hidden></p>
+    </div>
+  </div>
+
+  <div id="settings-modal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+    <div class="edit-modal-card settings-card">
+      <button id="settings-close" class="settings-close" type="button" aria-label="Stäng inställningar" data-i18n-aria="closeSettings"><img src="modal-close.svg" alt="" /></button>
+      <h2 id="settings-title" data-i18n="settings">Inställningar</h2>
+      <form id="settings-form">
+        <section id="group-management" class="settings-group group-management" aria-labelledby="group-management-title" hidden>
+          <h3 id="group-management-title">Grupp</h3>
+          <label class="field">
+            <span class="field-label">Gruppnamn</span>
+            <input id="settings-group-name" type="text" maxlength="60" />
+          </label>
+        </section>
+        <section class="settings-profile" aria-labelledby="settings-profile-title">
+          <h3 id="settings-profile-title">Profil</h3>
+          <div class="settings-identity-row">
+            <div class="field settings-avatar-field">
+              <span class="field-label" data-i18n="avatar">Avatar</span>
+              <button id="settings-avatar-trigger" class="settings-avatar-trigger" type="button" aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Anpassa avatar" data-i18n-aria="customizeAvatar">J</button>
+            </div>
+            <label class="field settings-name-field">
+              <span class="field-label" data-i18n="yourName">Ditt namn</span>
+              <input id="settings-name" type="text" maxlength="40" required />
+            </label>
+          </div>
+        </section>
+        <section class="settings-group group-members-settings" aria-labelledby="settings-group-title">
+          <div class="group-roster-head">
+            <h3 id="settings-group-title">Medlemmar</h3>
+            <span id="group-member-count"></span>
+          </div>
+          <div id="group-member-list" class="group-member-list"></div>
+          <p id="group-status">Gruppen uppdateras automatiskt när någon ansluter.</p>
+          <div id="invite-panel" class="invite-panel">
+            <label class="field invite-link-field">
+              <span class="field-label">Inbjudningslänk</span>
+              <span class="invite-link-control">
+                <input id="invite-link" type="text" readonly aria-label="Inbjudningslänk" />
+                <button id="copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk"><img src="copy.svg" alt="" /></button>
+              </span>
+            </label>
+          </div>
+        </section>
+        <div class="field">
+          <span class="field-label" data-i18n="language">Språk</span>
+          <div class="seg" id="settings-language">
+            <button type="button" data-language="sv"><img src="flag-sweden.svg" alt="" />Svenska</button>
+            <button type="button" data-language="en"><img src="flag-uk.svg" alt="" />English</button>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label" data-i18n="theme">Tema</span>
+          <div class="seg" id="settings-theme">
+            <button type="button" data-theme="system" data-i18n="systemTheme">Auto</button>
+            <button type="button" data-theme="light"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><span data-i18n="lightTheme">Ljust</span></button>
+            <button type="button" data-theme="dark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n="darkTheme">Mörkt</span></button>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" data-i18n="saveChanges">Spara ändringar</button>
+      </form>
+      <button id="delete-group" class="delete-group" type="button">Ta bort grupp</button>
+      <p id="settings-error" class="error" hidden></p>
+    </div>
+  </div>
+
+  <div id="avatar-modal" class="edit-modal avatar-modal" role="dialog" aria-modal="true" aria-labelledby="avatar-modal-title" hidden>
+    <div class="edit-modal-card avatar-modal-card">
+      <div class="avatar-modal-head">
+        <button id="avatar-cancel" class="avatar-modal-text-action" type="button" data-i18n="cancel">Avbryt</button>
+        <h2 id="avatar-modal-title" data-i18n="chooseAvatar">Välj en avatar</h2>
+        <button id="avatar-confirm" class="avatar-modal-text-action avatar-confirm" type="button" data-i18n="choose">Välj</button>
+      </div>
+      <div id="avatar-modal-preview" class="avatar-modal-preview">J</div>
+      <div class="seg avatar-mode" id="settings-avatar-mode">
+        <button type="button" data-avatar-mode="letter" data-i18n="initial">Initial</button>
+        <button type="button" data-avatar-mode="emoji" data-i18n="emoji">Emoji</button>
+      </div>
+      <div id="settings-avatar-emoji-panel" class="settings-avatar-emoji-panel" hidden>
+        <div id="settings-emoji-grid" class="settings-emoji-grid" aria-label="Välj emoji" data-i18n-aria="chooseEmoji">
+          <button type="button" data-emoji="😀">😀</button>
+          <button type="button" data-emoji="😎">😎</button>
+          <button type="button" data-emoji="🥳">🥳</button>
+          <button type="button" data-emoji="🤓">🤓</button>
+          <button type="button" data-emoji="😍">😍</button>
+          <button type="button" data-emoji="🤠">🤠</button>
+          <button type="button" data-emoji="👻">👻</button>
+          <button type="button" data-emoji="👽">👽</button>
+          <button type="button" data-emoji="🤖">🤖</button>
+          <button type="button" data-emoji="🐵">🐵</button>
+          <button type="button" data-emoji="🦊">🦊</button>
+          <button type="button" data-emoji="🐸">🐸</button>
+          <button type="button" data-emoji="🐻">🐻</button>
+          <button type="button" data-emoji="🐱">🐱</button>
+          <button type="button" data-emoji="🐶">🐶</button>
+          <button type="button" data-emoji="🦦">🦦</button>
+          <button type="button" data-emoji="🌈">🌈</button>
+          <button type="button" data-emoji="✨">✨</button>
+        </div>
+        <input id="settings-avatar-emoji" class="settings-avatar-emoji" type="text" maxlength="16" placeholder="Annan emoji…" data-i18n-placeholder="customEmoji" aria-label="Valfri emoji" data-i18n-aria="optionalEmoji" />
+      </div>
+      <div class="avatar-color-field">
+        <span class="field-label" data-i18n="profileColor">Avatarfärg</span>
+        <div id="settings-color" class="profile-colors" role="radiogroup">
+          <button type="button" role="radio" data-color="#ef5b5b" style="--choice-color:#ef5b5b" aria-label="Röd"></button>
+          <button type="button" role="radio" data-color="#f28c45" style="--choice-color:#f28c45" aria-label="Orange"></button>
+          <button type="button" role="radio" data-color="#e6c84f" style="--choice-color:#e6c84f" aria-label="Gul"></button>
+          <button type="button" role="radio" data-color="#9fbe55" style="--choice-color:#9fbe55" aria-label="Lime"></button>
+          <button type="button" role="radio" data-color="#62b86b" style="--choice-color:#62b86b" aria-label="Grön"></button>
+          <button type="button" role="radio" data-color="#38b6a5" style="--choice-color:#38b6a5" aria-label="Turkos"></button>
+          <button type="button" role="radio" data-color="#4baed4" style="--choice-color:#4baed4" aria-label="Ljusblå"></button>
+          <button type="button" role="radio" data-color="#5c8de8" style="--choice-color:#5c8de8" aria-label="Blå"></button>
+          <button type="button" role="radio" data-color="#9a6dd7" style="--choice-color:#9a6dd7" aria-label="Lila"></button>
+          <button type="button" role="radio" data-color="#df6da9" style="--choice-color:#df6da9" aria-label="Rosa"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="receipt-lightbox" class="receipt-lightbox" role="dialog" aria-modal="true" aria-label="Kvitto" data-i18n-aria="receipt" hidden>
+    <button id="receipt-lightbox-close" class="receipt-lightbox-close" type="button" aria-label="Stäng kvitto" data-i18n-aria="closeReceipt">
+      <img src="modal-close.svg" alt="" />
+    </button>
+    <div id="receipt-lightbox-stage" class="receipt-lightbox-stage">
+      <img id="receipt-lightbox-image" class="receipt-lightbox-image" alt="Kvitto i full storlek" data-i18n-alt="receiptFullSize" draggable="false" />
+    </div>
+    <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
+  </div>
+
+  <script type="module" src="app.js?v=adaptive-pair-group-prod"></script>
+</body>
+</html>
