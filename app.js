@@ -55,9 +55,9 @@ const TRANSLATIONS = {
     expense: "Utgift", income: "Inkomst", description: "Beskrivning", descriptionExample: "t.ex. Matvaror ICA",
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
     statistics: "Statistik", closeStatistics: "Stäng statistik", timePeriod: "Tidsperiod", thisMonth: "Denna månad", thisYear: "I år", lifetime: "Totalt", customPeriod: "Anpassad",
-    fromDate: "Från", toDate: "Till", totalExpenses: "Totala utgifter", expensesPerPerson: "Utlagt per person", expensesByCategory: "Utgifter per kategori",
+    fromDate: "Från", toDate: "Till", totalExpenses: "Totala kostnader", expensesPerPerson: "Kostnad per person", expensesByCategory: "Kostnader per kategori",
     subscriptions: "Prenumerationer", subscriptionShare: "{percentage}% av utgifterna",
-    statisticsCount: "{count} utgifter", statisticsCountOne: "1 utgift", statisticsNote: "Swish och inkomster ingår inte i utgiftssummorna.", noStatistics: "Inga utgifter under perioden.", otherCategory: "Övrigt",
+    statisticsCount: "{count} utgifter", statisticsCountOne: "1 utgift", statisticsNote: "Swish ingår inte. Intäkter dras av från totalsumman och respektive kategori.", noStatistics: "Inga utgifter eller intäkter under perioden.", otherCategory: "Övrigt",
     searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
@@ -81,7 +81,7 @@ const TRANSLATIONS = {
     inviteLink: "Inbjudningslänk", settleSwish: "Reglera med Swish", payWith: "Betala med", chooseCategory: "Välj kategori",
     currencySuffix: "kr", cancelEditing: "Avbryt redigering", deleteExpense: "Ta bort utlägg",
     historyPages: "Historiksidor", previousPage: "Föregående sida", nextPage: "Nästa sida",
-    groceries: "Matvaror", restaurantCafe: "Restaurang & café", accommodation: "Boende",
+    groceries: "Matvaror", restaurantCafe: "Restaurang", accommodation: "Boende",
     beauty: "Skönhet", transport: "Transport", travelExperiences: "Resor/upplevelser",
     entertainment: "Nöjen", alcohol: "Alkohol", interior: "Inredning", clothing: "Kläder",
     hobby: "Hobby/prylar", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Media/streaming",
@@ -125,9 +125,9 @@ const TRANSLATIONS = {
     expense: "Expense", income: "Income", description: "Description", descriptionExample: "e.g. Groceries",
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
     statistics: "Statistics", closeStatistics: "Close statistics", timePeriod: "Time period", thisMonth: "This month", thisYear: "This year", lifetime: "Lifetime", customPeriod: "Custom",
-    fromDate: "From", toDate: "To", totalExpenses: "Total expenses", expensesPerPerson: "Paid per person", expensesByCategory: "Expenses by category",
+    fromDate: "From", toDate: "To", totalExpenses: "Total costs", expensesPerPerson: "Cost per person", expensesByCategory: "Costs by category",
     subscriptions: "Subscriptions", subscriptionShare: "{percentage}% of expenses",
-    statisticsCount: "{count} expenses", statisticsCountOne: "1 expense", statisticsNote: "Swish payments and income are excluded from expense totals.", noStatistics: "No expenses in this period.", otherCategory: "Other",
+    statisticsCount: "{count} expenses", statisticsCountOne: "1 expense", statisticsNote: "Swish payments are excluded. Income is deducted from the total and its category.", noStatistics: "No expenses or income in this period.", otherCategory: "Other",
     searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
@@ -151,7 +151,7 @@ const TRANSLATIONS = {
     inviteLink: "Invitation link", settleSwish: "Settle with Swish", payWith: "Settle with", chooseCategory: "Choose category",
     currencySuffix: "SEK", cancelEditing: "Cancel editing", deleteExpense: "Delete expense",
     historyPages: "History pages", previousPage: "Previous page", nextPage: "Next page",
-    groceries: "Groceries", restaurantCafe: "Restaurant & café", accommodation: "Accommodation",
+    groceries: "Groceries", restaurantCafe: "Restaurant", accommodation: "Accommodation",
     beauty: "Beauty", transport: "Transport", travelExperiences: "Travel & experiences",
     entertainment: "Entertainment", alcohol: "Alcohol", interior: "Home decor", clothing: "Clothing",
     hobby: "Hobbies & gadgets", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Media & streaming",
@@ -618,6 +618,7 @@ let HISTORY_PAGE = 1;
 let OPEN_SWIPE_ROW = null;
 let GROUP_DATA_LOADING = false;
 let STATISTICS_PERIOD = "month";
+let STATISTICS_PERSON_FILTER = null;
 const HISTORY_PAGE_SIZE = 10;
 
 const STATISTICS_CATEGORY_KEYS = {
@@ -694,29 +695,77 @@ function statisticsPeriodLabel(range) {
   return from || to || t("customPeriod");
 }
 
+function statisticsCostShares(entry, profiles) {
+  const direction = entry.type === "income" ? -1 : 1;
+  const profileUids = new Set(profiles.map(([uid]) => uid));
+  const participants = (entry.participantUids || []).filter((uid) => profileUids.has(uid));
+
+  if (participants.length) {
+    const amount = Number(entry.amount) || 0;
+    const sharedAmount = entry.type === "expense"
+      ? Math.max(0, amount - (Number(entry.excludedAmount) || 0))
+      : amount;
+    const totalCents = Math.round(sharedAmount * 100);
+    const baseCents = Math.floor(totalCents / participants.length);
+    let remainderCents = totalCents - (baseCents * participants.length);
+    return participants.map((uid) => {
+      const cents = baseCents + (remainderCents > 0 ? 1 : 0);
+      remainderCents = Math.max(0, remainderCents - 1);
+      return [uid, (cents / 100) * direction];
+    });
+  }
+
+  const shares = sharesOf(entry);
+  return [
+    [profileUidForSlot("A", profiles), shares.a * direction],
+    [profileUidForSlot("B", profiles), shares.b * direction],
+  ].filter(([uid, amount]) => uid && Math.abs(amount) >= 0.005);
+}
+
 function renderStatistics() {
   const modal = document.getElementById("statistics-modal");
   if (!modal || modal.hidden || !activeBankbook) return;
   const profiles = displayGroupProfiles();
   const range = statisticsRange();
-  const expenses = ENTRIES.filter((entry) => {
-    if (entry.type !== "expense") return false;
+  const statisticsEntries = ENTRIES.filter((entry) => {
+    if (!["expense", "income"].includes(entry.type)) return false;
     const timestamp = entry.ts?.toMillis?.() ?? Number(entry.ts);
     if (!Number.isFinite(timestamp)) return false;
     if (range.start && timestamp < range.start.getTime()) return false;
     if (range.end && timestamp >= range.end.getTime()) return false;
     return true;
   });
-  const total = expenses.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
-  const recurringTotal = expenses
-    .filter((entry) => Boolean(entry.recurringId))
-    .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
-  const recurringPercentage = total > 0 ? Math.round((recurringTotal / total) * 100) : 0;
-  const personStatistics = profiles.map(([uid, profile], index) => {
-    const amount = expenses
-      .filter((entry) => entryPayerUid(entry, profiles) === uid)
-      .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+  const statisticsRecords = statisticsEntries.map((entry) => {
+    const memberShares = statisticsCostShares(entry, profiles);
     return {
+      entry,
+      memberShares,
+      amount: memberShares.reduce((sum, [, amount]) => sum + amount, 0),
+    };
+  });
+  if (STATISTICS_PERSON_FILTER && !profiles.some(([uid]) => uid === STATISTICS_PERSON_FILTER)) {
+    STATISTICS_PERSON_FILTER = null;
+  }
+  const filteredRecords = STATISTICS_PERSON_FILTER
+    ? statisticsRecords.map(({ entry, memberShares }) => {
+      const memberShare = memberShares.find(([uid]) => uid === STATISTICS_PERSON_FILTER)?.[1] || 0;
+      return { entry, memberShares, amount: memberShare };
+    }).filter(({ amount }) => Math.abs(amount) >= 0.005)
+    : statisticsRecords;
+  const expenses = filteredRecords.filter(({ entry }) => entry.type === "expense");
+  const grossExpenseTotal = expenses.reduce((sum, record) => sum + record.amount, 0);
+  const total = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
+  const recurringTotal = expenses
+    .filter(({ entry }) => Boolean(entry.recurringId))
+    .reduce((sum, record) => sum + record.amount, 0);
+  const recurringPercentage = grossExpenseTotal > 0 ? Math.round((recurringTotal / grossExpenseTotal) * 100) : 0;
+  const personStatistics = profiles.map(([uid, profile], index) => {
+    const amount = statisticsRecords.reduce((sum, { memberShares }) => {
+      const memberShare = memberShares.find(([memberUid]) => memberUid === uid)?.[1] || 0;
+      return sum + memberShare;
+    }, 0);
+    return {
+      uid,
       amount,
       color: validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length],
       name: uid === currentMemberId() ? t("you") : profile.name,
@@ -727,19 +776,22 @@ function renderStatistics() {
     button.classList.toggle("active", button.dataset.statisticsPeriod === STATISTICS_PERIOD));
   document.getElementById("statistics-custom-range").hidden = STATISTICS_PERIOD !== "custom";
   document.getElementById("statistics-period-label").textContent = statisticsPeriodLabel(range);
-  document.getElementById("statistics-total").textContent = kr(total);
+  const statisticsTotal = document.getElementById("statistics-total");
+  statisticsTotal.textContent = kr(total);
+  statisticsTotal.classList.toggle("is-credit", total < 0);
   document.getElementById("statistics-count").textContent = expenses.length === 1
     ? t("statisticsCountOne")
     : t("statisticsCount", { count: expenses.length });
   document.getElementById("statistics-recurring-total").textContent = kr(recurringTotal);
   document.getElementById("statistics-recurring-share").textContent = t("subscriptionShare", { percentage: recurringPercentage });
 
+  const positiveCostTotal = personStatistics.reduce((sum, { amount }) => sum + Math.max(0, amount), 0);
   let piePosition = 0;
   const pieSegments = personStatistics
-    .filter(({ amount }) => amount > 0 && total > 0)
+    .filter(({ amount }) => amount > 0 && positiveCostTotal > 0)
     .map(({ amount, color }) => {
       const start = piePosition;
-      piePosition += (amount / total) * 100;
+      piePosition += (amount / positiveCostTotal) * 100;
       return `${color} ${start}% ${piePosition}%`;
     });
   const pieBackground = pieSegments.length
@@ -751,33 +803,37 @@ function renderStatistics() {
     .join(", ");
   document.getElementById("statistics-people").innerHTML = `<div class="statistics-people-chart">
     <div class="statistics-pie" role="img" aria-label="${escapeHtml(pieLabel || t("noStatistics"))}" style="--statistics-pie:${pieBackground}"></div>
-    <div class="statistics-pie-legend">${personStatistics.map(({ amount, color, name }) => {
-      const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
-      return `<div class="statistics-pie-legend-row">
+    <div class="statistics-pie-legend${STATISTICS_PERSON_FILTER ? " has-filter" : ""}">${personStatistics.map(({ uid, amount, color, name }) => {
+      const percentage = amount > 0 && positiveCostTotal > 0 ? Math.round((amount / positiveCostTotal) * 100) : 0;
+      const active = uid === STATISTICS_PERSON_FILTER;
+      return `<button type="button" class="statistics-pie-legend-row${amount < 0 ? " is-credit" : ""}${active ? " is-active" : ""}" data-statistics-person="${escapeHtml(uid)}" aria-pressed="${active}">
         <span><i class="profile-dot" style="--profile-color:${color}"></i>${escapeHtml(name)}</span>
         <strong>${kr(amount)} <small>${percentage}%</small></strong>
-      </div>`;
+      </button>`;
     }).join("")}</div>
   </div>`;
 
   const categories = new Map();
-  expenses.forEach((entry) => {
+  filteredRecords.forEach(({ entry, amount }) => {
     const sourceIcon = entry.icon || "🧾";
     const icon = STATISTICS_CATEGORY_ALIASES[sourceIcon]
       || (STATISTICS_CATEGORY_KEYS[sourceIcon] ? sourceIcon : "🧾");
-    categories.set(icon, (categories.get(icon) || 0) + (Number(entry.amount) || 0));
+    categories.set(icon, (categories.get(icon) || 0) + amount);
   });
-  const sortedCategories = [...categories.entries()].sort((left, right) => right[1] - left[1]);
+  const sortedCategories = [...categories.entries()]
+    .filter(([, amount]) => Math.abs(amount) >= 0.005)
+    .sort((left, right) => Math.abs(right[1]) - Math.abs(left[1]));
+  const largestCategoryAmount = Math.max(0, ...sortedCategories.map(([, amount]) => Math.abs(amount)));
   document.getElementById("statistics-categories").innerHTML = sortedCategories.map(([icon, amount]) => {
-    const width = total > 0 ? (amount / total) * 100 : 0;
-    const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
-    return `<div class="statistics-row statistics-category-row">
+    const width = largestCategoryAmount > 0 ? (Math.abs(amount) / largestCategoryAmount) * 100 : 0;
+    const percentage = total !== 0 ? Math.round((amount / total) * 100) : 0;
+    return `<div class="statistics-row statistics-category-row${amount < 0 ? " is-credit" : ""}">
       <div class="statistics-row-head"><span><i class="statistics-category-icon">${icon}</i>${escapeHtml(t(STATISTICS_CATEGORY_KEYS[icon]))}</span><strong>${kr(amount)} <small>${percentage}%</small></strong></div>
       <span class="statistics-bar"><i style="width:${width}%"></i></span>
     </div>`;
   }).join("");
 
-  const empty = expenses.length === 0;
+  const empty = statisticsRecords.length === 0;
   document.getElementById("statistics-empty").hidden = !empty;
   document.querySelectorAll("#statistics-modal .statistics-section").forEach((section) => { section.hidden = empty; });
 }
@@ -3527,6 +3583,7 @@ function openStatistics() {
 
 function closeStatistics() {
   document.getElementById("statistics-modal").hidden = true;
+  STATISTICS_PERSON_FILTER = null;
 }
 
 document.getElementById("statistics-trigger").addEventListener("click", openStatistics);
@@ -3538,6 +3595,14 @@ document.getElementById("statistics-period").addEventListener("click", (event) =
   renderStatistics();
 });
 document.getElementById("statistics-custom-range").addEventListener("change", renderStatistics);
+document.getElementById("statistics-people").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-statistics-person]");
+  if (!button) return;
+  STATISTICS_PERSON_FILTER = STATISTICS_PERSON_FILTER === button.dataset.statisticsPerson
+    ? null
+    : button.dataset.statisticsPerson;
+  renderStatistics();
+});
 document.getElementById("statistics-modal").addEventListener("click", (event) => {
   if (event.target === event.currentTarget) closeStatistics();
 });
