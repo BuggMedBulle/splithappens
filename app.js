@@ -54,6 +54,9 @@ const TRANSLATIONS = {
     closeSettings: "Stäng inställningar", balance: "Saldo", markPaid: "Markera som swishat", add: "Lägg till",
     expense: "Utgift", income: "Inkomst", description: "Beskrivning", descriptionExample: "t.ex. Matvaror ICA",
     amount: "Belopp", date: "Datum", split: "Delning", custom: "Anpassad", history: "Historik",
+    statistics: "Statistik", closeStatistics: "Stäng statistik", timePeriod: "Tidsperiod", thisMonth: "Denna månad", thisYear: "I år", lifetime: "Totalt", customPeriod: "Anpassad",
+    fromDate: "Från", toDate: "Till", totalExpenses: "Totala utgifter", expensesPerPerson: "Utlagt per person", expensesByCategory: "Utgifter per kategori",
+    statisticsCount: "{count} utgifter", statisticsCountOne: "1 utgift", statisticsNote: "Swish och inkomster ingår inte i utgiftssummorna.", noStatistics: "Inga utgifter under perioden.", otherCategory: "Övrigt",
     searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
@@ -77,9 +80,10 @@ const TRANSLATIONS = {
     inviteLink: "Inbjudningslänk", settleSwish: "Reglera med Swish", payWith: "Betala med", chooseCategory: "Välj kategori",
     currencySuffix: "kr", cancelEditing: "Avbryt redigering", deleteExpense: "Ta bort utlägg",
     historyPages: "Historiksidor", previousPage: "Föregående sida", nextPage: "Nästa sida",
-    groceries: "Mat", meal: "Lunch eller middag", cinema: "Bio", snacks: "Snacks eller godis",
-    alcohol: "Alkohol", travel: "Resa", taxi: "Taxi", liveSport: "Live-sport", fuel: "Bensin",
-    shopping: "Shopping", experiences: "Upplevelser eller utflykter",
+    groceries: "Matvaror", restaurantCafe: "Restaurang & café", accommodation: "Boende",
+    beauty: "Skönhet", transport: "Transport", travelExperiences: "Resor/upplevelser",
+    entertainment: "Nöjen", alcohol: "Alkohol", interior: "Inredning", clothing: "Kläder",
+    gadgets: "Prylar", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Streaming",
     receipt: "Kvitto", addReceipt: "Lägg till bild", changeReceipt: "Byt bild", removeReceipt: "Ta bort",
     receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
     receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
@@ -119,6 +123,9 @@ const TRANSLATIONS = {
     closeSettings: "Close settings", balance: "Balance", markPaid: "Mark as paid", add: "Add",
     expense: "Expense", income: "Income", description: "Description", descriptionExample: "e.g. Groceries",
     amount: "Amount", date: "Date", split: "Split", custom: "Custom", history: "History",
+    statistics: "Statistics", closeStatistics: "Close statistics", timePeriod: "Time period", thisMonth: "This month", thisYear: "This year", lifetime: "Lifetime", customPeriod: "Custom",
+    fromDate: "From", toDate: "To", totalExpenses: "Total expenses", expensesPerPerson: "Paid per person", expensesByCategory: "Expenses by category",
+    statisticsCount: "{count} expenses", statisticsCountOne: "1 expense", statisticsNote: "Swish payments and income are excluded from expense totals.", noStatistics: "No expenses in this period.", otherCategory: "Other",
     searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
@@ -142,9 +149,10 @@ const TRANSLATIONS = {
     inviteLink: "Invitation link", settleSwish: "Settle with Swish", payWith: "Settle with", chooseCategory: "Choose category",
     currencySuffix: "SEK", cancelEditing: "Cancel editing", deleteExpense: "Delete expense",
     historyPages: "History pages", previousPage: "Previous page", nextPage: "Next page",
-    groceries: "Groceries", meal: "Lunch or dinner", cinema: "Cinema", snacks: "Snacks or candy",
-    alcohol: "Alcohol", travel: "Travel", taxi: "Taxi", liveSport: "Live sports", fuel: "Fuel",
-    shopping: "Shopping", experiences: "Experiences or excursions",
+    groceries: "Groceries", restaurantCafe: "Restaurant & café", accommodation: "Accommodation",
+    beauty: "Beauty", transport: "Transport", travelExperiences: "Travel & experiences",
+    entertainment: "Entertainment", alcohol: "Alcohol", interior: "Home decor", clothing: "Clothing",
+    gadgets: "Gadgets", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Streaming",
     receipt: "Receipt", addReceipt: "Add image", changeReceipt: "Change image", removeReceipt: "Remove",
     receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
     receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
@@ -607,7 +615,162 @@ let HISTORY_SEARCH = "";
 let HISTORY_PAGE = 1;
 let OPEN_SWIPE_ROW = null;
 let GROUP_DATA_LOADING = false;
+let STATISTICS_PERIOD = "month";
 const HISTORY_PAGE_SIZE = 10;
+
+const STATISTICS_CATEGORY_KEYS = {
+  "🛒": "groceries",
+  "🍽️": "restaurantCafe",
+  "🏠": "accommodation",
+  "💄": "beauty",
+  "🚕": "transport",
+  "✈️": "travelExperiences",
+  "🎟️": "entertainment",
+  "🍺": "alcohol",
+  "🛋️": "interior",
+  "🛍️": "clothing",
+  "📷": "gadgets",
+  "🍰": "fika",
+  "🏋️": "fitness",
+  "🎁": "gifts",
+  "📺": "streaming",
+  "🧾": "otherCategory",
+};
+
+const STATISTICS_CATEGORY_ALIASES = {
+  "🧼": "💄",
+  "🏟️": "🎟️",
+  "🎬": "🎟️",
+  "🍿": "🎟️",
+  "🎉": "🎟️",
+  "🎢": "🎟️",
+  "🍷": "🍺",
+  "🚗": "🚕",
+  "⛽": "🚕",
+  "🗺️": "✈️",
+};
+
+function inputDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function statisticsRange() {
+  const now = new Date();
+  if (STATISTICS_PERIOD === "month") {
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+  }
+  if (STATISTICS_PERIOD === "year") {
+    return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear() + 1, 0, 1) };
+  }
+  if (STATISTICS_PERIOD === "custom") {
+    const fromValue = document.getElementById("statistics-from").value;
+    const toValue = document.getElementById("statistics-to").value;
+    const start = fromValue ? new Date(`${fromValue}T00:00:00`) : null;
+    const end = toValue ? new Date(`${toValue}T00:00:00`) : null;
+    if (end) end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+  return { start: null, end: null };
+}
+
+function statisticsPeriodLabel(range) {
+  if (STATISTICS_PERIOD === "month") {
+    return new Date().toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  }
+  if (STATISTICS_PERIOD === "year") return String(new Date().getFullYear());
+  if (STATISTICS_PERIOD === "lifetime") return t("lifetime");
+  const options = { day: "numeric", month: "short", year: "numeric" };
+  const from = range.start?.toLocaleDateString(locale(), options);
+  const inclusiveEnd = range.end ? new Date(range.end.getTime() - 1) : null;
+  const to = inclusiveEnd?.toLocaleDateString(locale(), options);
+  if (from && to) return `${from} – ${to}`;
+  return from || to || t("customPeriod");
+}
+
+function renderStatistics() {
+  const modal = document.getElementById("statistics-modal");
+  if (!modal || modal.hidden || !activeBankbook) return;
+  const profiles = displayGroupProfiles();
+  const range = statisticsRange();
+  const expenses = ENTRIES.filter((entry) => {
+    if (entry.type !== "expense") return false;
+    const timestamp = entry.ts?.toMillis?.() ?? Number(entry.ts);
+    if (!Number.isFinite(timestamp)) return false;
+    if (range.start && timestamp < range.start.getTime()) return false;
+    if (range.end && timestamp >= range.end.getTime()) return false;
+    return true;
+  });
+  const total = expenses.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+  const personStatistics = profiles.map(([uid, profile], index) => {
+    const amount = expenses
+      .filter((entry) => entryPayerUid(entry, profiles) === uid)
+      .reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+    return {
+      amount,
+      color: validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length],
+      name: uid === currentMemberId() ? t("you") : profile.name,
+    };
+  });
+
+  document.querySelectorAll("#statistics-period [data-statistics-period]").forEach((button) =>
+    button.classList.toggle("active", button.dataset.statisticsPeriod === STATISTICS_PERIOD));
+  document.getElementById("statistics-custom-range").hidden = STATISTICS_PERIOD !== "custom";
+  document.getElementById("statistics-period-label").textContent = statisticsPeriodLabel(range);
+  document.getElementById("statistics-total").textContent = kr(total);
+  document.getElementById("statistics-count").textContent = expenses.length === 1
+    ? t("statisticsCountOne")
+    : t("statisticsCount", { count: expenses.length });
+
+  let piePosition = 0;
+  const pieSegments = personStatistics
+    .filter(({ amount }) => amount > 0 && total > 0)
+    .map(({ amount, color }) => {
+      const start = piePosition;
+      piePosition += (amount / total) * 100;
+      return `${color} ${start}% ${piePosition}%`;
+    });
+  const pieBackground = pieSegments.length
+    ? `conic-gradient(${pieSegments.join(",")})`
+    : "var(--field)";
+  const pieLabel = personStatistics
+    .filter(({ amount }) => amount > 0)
+    .map(({ name, amount }) => `${name}: ${kr(amount)}`)
+    .join(", ");
+  document.getElementById("statistics-people").innerHTML = `<div class="statistics-people-chart">
+    <div class="statistics-pie" role="img" aria-label="${escapeHtml(pieLabel || t("noStatistics"))}" style="--statistics-pie:${pieBackground}"></div>
+    <div class="statistics-pie-legend">${personStatistics.map(({ amount, color, name }) => {
+      const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
+      return `<div class="statistics-pie-legend-row">
+        <span><i class="profile-dot" style="--profile-color:${color}"></i>${escapeHtml(name)}</span>
+        <strong>${kr(amount)} <small>${percentage}%</small></strong>
+      </div>`;
+    }).join("")}</div>
+  </div>`;
+
+  const categories = new Map();
+  expenses.forEach((entry) => {
+    const sourceIcon = entry.icon || "🧾";
+    const icon = STATISTICS_CATEGORY_ALIASES[sourceIcon]
+      || (STATISTICS_CATEGORY_KEYS[sourceIcon] ? sourceIcon : "🧾");
+    categories.set(icon, (categories.get(icon) || 0) + (Number(entry.amount) || 0));
+  });
+  const sortedCategories = [...categories.entries()].sort((left, right) => right[1] - left[1]);
+  document.getElementById("statistics-categories").innerHTML = sortedCategories.map(([icon, amount]) => {
+    const width = total > 0 ? (amount / total) * 100 : 0;
+    const percentage = total > 0 ? Math.round((amount / total) * 100) : 0;
+    return `<div class="statistics-row statistics-category-row">
+      <div class="statistics-row-head"><span><i class="statistics-category-icon">${icon}</i>${escapeHtml(t(STATISTICS_CATEGORY_KEYS[icon]))}</span><strong>${kr(amount)} <small>${percentage}%</small></strong></div>
+      <span class="statistics-bar"><i style="width:${width}%"></i></span>
+    </div>`;
+  }).join("");
+
+  const empty = expenses.length === 0;
+  document.getElementById("statistics-empty").hidden = !empty;
+  document.querySelectorAll("#statistics-modal .statistics-section").forEach((section) => { section.hidden = empty; });
+}
 
 function subjectName(personKey) {
   return personKey === CURRENT_USER ? t("you") : PEOPLE[personKey].name;
@@ -684,6 +847,7 @@ function render() {
   renderBalance();
   renderHistory();
   renderRecurringSettings();
+  renderStatistics();
 }
 
 function renderRecurringSettings() {
@@ -3269,11 +3433,20 @@ document.getElementById("create-group-form").addEventListener("submit", async (e
     saveButton.disabled = false;
   }
 });
-document.getElementById("create-group-copy-invite").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(document.getElementById("create-group-invite-link").value);
-  const copyButton = document.getElementById("create-group-copy-invite");
+function showCopiedState(copyButton) {
   copyButton.setAttribute("aria-label", t("copied"));
   copyButton.title = t("copied");
+  copyButton.classList.add("is-copied");
+  window.setTimeout(() => {
+    copyButton.setAttribute("aria-label", t("copyInviteLink"));
+    copyButton.title = t("copyInviteLink");
+    copyButton.classList.remove("is-copied");
+  }, 1500);
+}
+
+document.getElementById("create-group-copy-invite").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(document.getElementById("create-group-invite-link").value);
+  showCopiedState(document.getElementById("create-group-copy-invite"));
 });
 document.getElementById("create-group-continue").addEventListener("click", async () => {
   if (!CREATED_BANKBOOK) return;
@@ -3284,14 +3457,7 @@ document.getElementById("create-group-continue").addEventListener("click", async
 
 document.getElementById("copy-invite").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("invite-link").value);
-  const copyButton = document.getElementById("copy-invite");
-  const originalLabel = t("copyInviteLink");
-  copyButton.setAttribute("aria-label", t("copied"));
-  copyButton.title = t("copied");
-  window.setTimeout(() => {
-    copyButton.setAttribute("aria-label", originalLabel);
-    copyButton.title = originalLabel;
-  }, 1500);
+  showCopiedState(document.getElementById("copy-invite"));
 });
 
 function closeSettings() {
@@ -3338,6 +3504,36 @@ function openSettings() {
 }
 
 document.getElementById("settings-trigger").addEventListener("click", openSettings);
+
+function openStatistics() {
+  const now = new Date();
+  const fromInput = document.getElementById("statistics-from");
+  const toInput = document.getElementById("statistics-to");
+  if (!fromInput.value) fromInput.value = inputDateValue(new Date(now.getFullYear(), now.getMonth(), 1));
+  if (!toInput.value) toInput.value = inputDateValue(now);
+  document.getElementById("statistics-modal").hidden = false;
+  renderStatistics();
+}
+
+function closeStatistics() {
+  document.getElementById("statistics-modal").hidden = true;
+}
+
+document.getElementById("statistics-trigger").addEventListener("click", openStatistics);
+document.getElementById("statistics-close").addEventListener("click", closeStatistics);
+document.getElementById("statistics-period").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-statistics-period]");
+  if (!button) return;
+  STATISTICS_PERIOD = button.dataset.statisticsPeriod;
+  renderStatistics();
+});
+document.getElementById("statistics-custom-range").addEventListener("change", renderStatistics);
+document.getElementById("statistics-modal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeStatistics();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("statistics-modal").hidden) closeStatistics();
+});
 
 async function deleteCollectionDocuments(collectionReference) {
   const snapshot = await fs.getDocs(collectionReference);

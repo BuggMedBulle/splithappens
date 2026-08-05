@@ -56,6 +56,11 @@
       <span class="brand"><span class="brand-logo">Split Happens</span><small id="active-group-name"></small></span>
       <div class="app-meta">
         <button id="switch-group" type="button" aria-label="Byt grupp" title="Byt grupp"><img src="repeat.svg" alt="" /></button>
+        <button id="statistics-trigger" type="button" aria-label="Statistik" title="Statistik" data-i18n-aria="statistics" data-i18n-title="statistics">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.2 7.8l-7.7 7.7-4-4-5.7 5.7"/><path d="M15 7h6v6"/>
+          </svg>
+        </button>
         <button id="settings-trigger" type="button" aria-label="Inställningar" title="Inställningar" data-i18n-aria="settings" data-i18n-title="settings"><img src="settings.svg" alt="" /></button>
         <span id="sync-dot" class="sync" title="Ansluter…" hidden></span>
       </div>
@@ -101,18 +106,22 @@
                       aria-haspopup="true" aria-expanded="false" title="Välj kategori" data-i18n-title="chooseCategory">🧾</button>
               <input id="e-desc" type="text" placeholder="t.ex. Matvaror ICA" data-i18n-placeholder="descriptionExample" required maxlength="60" />
               <div id="icon-pop" class="icon-pop" hidden>
-                <button type="button" id="icon-default-option" data-icon="🧾" title="Övrigt">🧾</button>
-                <button type="button" data-icon="🛒" title="Mat" data-i18n-title="groceries">🛒</button>
-                <button type="button" data-icon="🍽️" title="Lunch eller middag" data-i18n-title="meal">🍽️</button>
-                <button type="button" data-icon="🎬" title="Bio" data-i18n-title="cinema">🎬</button>
-                <button type="button" data-icon="🍿" title="Snacks eller godis" data-i18n-title="snacks">🍿</button>
-                <button type="button" data-icon="🍷" title="Alkohol" data-i18n-title="alcohol">🍷</button>
-                <button type="button" data-icon="✈️" title="Resa" data-i18n-title="travel">✈️</button>
-                <button type="button" data-icon="🚕" title="Taxi" data-i18n-title="taxi">🚕</button>
-                <button type="button" data-icon="🏟️" title="Live-sport" data-i18n-title="liveSport">🏟️</button>
-                <button type="button" data-icon="⛽" title="Bensin" data-i18n-title="fuel">⛽</button>
-                <button type="button" data-icon="🛍️" title="Shopping" data-i18n-title="shopping">🛍️</button>
-                <button type="button" data-icon="🗺️" title="Upplevelser eller utflykter" data-i18n-title="experiences">🗺️</button>
+                <button type="button" data-icon="🛒" title="Matvaror" data-i18n-title="groceries">🛒</button>
+                <button type="button" data-icon="🍽️" title="Restaurang & café" data-i18n-title="restaurantCafe">🍽️</button>
+                <button type="button" data-icon="🍰" title="Fika" data-i18n-title="fika">🍰</button>
+                <button type="button" data-icon="🍺" title="Alkohol" data-i18n-title="alcohol">🍺</button>
+                <button type="button" data-icon="🚕" title="Transport" data-i18n-title="transport">🚕</button>
+                <button type="button" data-icon="✈️" title="Resor/upplevelser" data-i18n-title="travelExperiences">✈️</button>
+                <button type="button" data-icon="🎟️" title="Nöjen" data-i18n-title="entertainment">🎟️</button>
+                <button type="button" data-icon="🛍️" title="Kläder" data-i18n-title="clothing">🛍️</button>
+                <button type="button" data-icon="💄" title="Skönhet" data-i18n-title="beauty">💄</button>
+                <button type="button" data-icon="📷" title="Prylar" data-i18n-title="gadgets">📷</button>
+                <button type="button" data-icon="🛋️" title="Inredning" data-i18n-title="interior">🛋️</button>
+                <button type="button" data-icon="🏠" title="Boende" data-i18n-title="accommodation">🏠</button>
+                <button type="button" data-icon="🎁" title="Presenter" data-i18n-title="gifts">🎁</button>
+                <button type="button" data-icon="🏋️" title="Träning" data-i18n-title="fitness">🏋️</button>
+                <button type="button" data-icon="📺" title="Streaming" data-i18n-title="streaming">📺</button>
+                <button type="button" id="icon-default-option" data-icon="🧾" title="Övrigt" data-i18n-title="otherCategory">🧾</button>
               </div>
             </div>
           </div>
@@ -258,6 +267,45 @@
         <p id="history-empty" class="empty">Inga utgifter än. Lägg till er första ovan.</p>
       </section>
     </main>
+  </div>
+
+  <div id="statistics-modal" class="edit-modal statistics-modal" role="dialog" aria-modal="true" aria-labelledby="statistics-title" hidden>
+    <div class="edit-modal-card statistics-card">
+      <button id="statistics-close" class="settings-close" type="button" aria-label="Stäng statistik" data-i18n-aria="closeStatistics"><img src="modal-close.svg" alt="" /></button>
+      <h2 id="statistics-title" data-i18n="statistics">Statistik</h2>
+
+      <div id="statistics-period" class="statistics-period" role="group" aria-label="Tidsperiod" data-i18n-aria="timePeriod">
+        <button type="button" data-statistics-period="month" class="active" data-i18n="thisMonth">Denna månad</button>
+        <button type="button" data-statistics-period="year" data-i18n="thisYear">I år</button>
+        <button type="button" data-statistics-period="lifetime" data-i18n="lifetime">Totalt</button>
+        <button type="button" data-statistics-period="custom" data-i18n="customPeriod">Anpassad</button>
+      </div>
+
+      <div id="statistics-custom-range" class="statistics-custom-range" hidden>
+        <label><span data-i18n="fromDate">Från</span><input id="statistics-from" type="date" /></label>
+        <label><span data-i18n="toDate">Till</span><input id="statistics-to" type="date" /></label>
+      </div>
+
+      <section class="statistics-summary" aria-labelledby="statistics-summary-title">
+        <p id="statistics-period-label" class="eyebrow"></p>
+        <h3 id="statistics-summary-title" data-i18n="totalExpenses">Totala utgifter</h3>
+        <strong id="statistics-total">0 kr</strong>
+        <p id="statistics-count" class="statistics-count"></p>
+      </section>
+
+      <section class="statistics-section" aria-labelledby="statistics-people-title">
+        <h3 id="statistics-people-title" data-i18n="expensesPerPerson">Utlagt per person</h3>
+        <div id="statistics-people" class="statistics-breakdown"></div>
+      </section>
+
+      <section class="statistics-section" aria-labelledby="statistics-categories-title">
+        <h3 id="statistics-categories-title" data-i18n="expensesByCategory">Utgifter per kategori</h3>
+        <div id="statistics-categories" class="statistics-breakdown"></div>
+      </section>
+
+      <p class="statistics-note" data-i18n="statisticsNote">Swish och inkomster ingår inte i utgiftssummorna.</p>
+      <p id="statistics-empty" class="empty" data-i18n="noStatistics" hidden>Inga utgifter under perioden.</p>
+    </div>
   </div>
 
   <div id="edit-modal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" hidden>
