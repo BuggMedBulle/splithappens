@@ -63,7 +63,7 @@ html, body {
 }
 button { font-family: inherit; cursor: pointer; }
 .brand small {
-  margin-left: 6px; color: var(--ink-3); font-family: var(--font-body);
+  color: var(--ink-3); font-family: var(--font-body); white-space: nowrap;
   font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
 }
 
@@ -182,7 +182,12 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 6px 14px;
 }
-.brand { font-family: "Boldonse", sans-serif; font-weight: 400; font-size: 1rem; letter-spacing: -0.02em; }
+.brand {
+  display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: baseline;
+  min-width: 0; column-gap: 8px; row-gap: 3px;
+  font-family: "Boldonse", sans-serif; font-weight: 400; font-size: 1rem; letter-spacing: -0.02em;
+}
+.brand-logo { flex: 0 0 auto; white-space: nowrap; }
 .app-meta { display: flex; align-items: center; gap: 9px; }
 #settings-trigger,
 #switch-group {
@@ -211,6 +216,14 @@ button { font-family: inherit; cursor: pointer; }
 }
 #balance-heading { margin: 0; color: var(--ink); font-family: var(--font-num); font-size: 2.85rem; font-weight: 400; letter-spacing: -0.03em; }
 #balance-heading.is-positive { color: var(--success); }
+.skeleton-block {
+  display: block; border-radius: 999px;
+  background: linear-gradient(100deg, var(--field) 25%, color-mix(in srgb, var(--field) 68%, var(--card)) 45%, var(--field) 65%);
+  background-size: 220% 100%; animation: skeleton-shimmer 1.25s ease-in-out infinite;
+}
+.skeleton-balance { width: min(58%, 250px); height: 0.95em; margin: 10px 0 12px; }
+.skeleton-copy { width: min(48%, 210px); height: 18px; margin-top: 10px; }
+@keyframes skeleton-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 #saldo-card .sub { margin: 8px 0 0; color: var(--ink-2); font-size: 0.98rem; }
 #saldo-card .sub strong { color: var(--ink); font-weight: 700; }
 .balance-sub-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
@@ -843,6 +856,9 @@ html[data-theme="dark"] .profile-colors button { background: var(--choice-color)
 .totals button.active { background: var(--field); color: var(--ink); }
 .totals.is-filtered button:not(.active) { opacity: 0.42; }
 .totals b { color: var(--ink); font-family: var(--font-num); font-size: clamp(0.78rem, 2.8vw, 1rem); font-weight: 700; white-space: nowrap; }
+.history-total-skeleton { display: grid; gap: 7px; padding: 9px 8px; }
+.skeleton-total-label { width: 58px; height: 12px; }
+.skeleton-total-value { width: 76px; height: 17px; }
 .empty { margin: 8px 0; text-align: center; color: var(--ink-3); font-size: 0.95rem; padding: 12px 0; }
 .history-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .history-heading h2 { margin: 0; }
@@ -867,6 +883,13 @@ html[data-theme="dark"] .profile-colors button { background: var(--choice-color)
   padding: 15px 2px; border-top: 1px solid var(--line); position: relative;
 }
 .history li:first-child { border-top: none; }
+.history li.history-skeleton-row { display: flex; padding: 17px 2px; }
+.skeleton-history-icon { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 8px; }
+.history-skeleton-main { display: grid; flex: 1; gap: 8px; min-width: 0; }
+.skeleton-history-title { width: min(68%, 220px); height: 17px; }
+.skeleton-history-sub { width: min(46%, 150px); height: 12px; }
+.skeleton-history-amount { width: 78px; height: 18px; flex: 0 0 78px; }
+@media (prefers-reduced-motion: reduce) { .skeleton-block { animation: none; } }
 .history li.history-date-marker {
   display: block; margin: 12px 0 2px; padding: 7px 2px 5px;
   border: 0; color: var(--ink-3); font-size: 0.74rem;

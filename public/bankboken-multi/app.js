@@ -27,6 +27,7 @@ let activeBankbook;
 let unsubscribeEntries;
 let unsubscribeWaitingRoom;
 let unsubscribeActiveBankbook;
+let entrySubscriptionToken = 0;
 let openingBankbook = false;
 let MULTI_EXPENSE_MODE = false;
 let MULTI_SPLIT_MODE = "equal";
@@ -329,10 +330,14 @@ async function initStore() {
   const col = fs.collection(db, "bankbooks", activeBankbook.id, "entries");
   const receipts = fs.collection(db, "bankbooks", activeBankbook.id, "receipts");
   store = {
-    subscribe(cb) {
+    subscribe(cb, onError) {
       const q = fs.query(col, fs.orderBy("ts", "desc"));
       return fs.onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-        (err) => { console.error(err); setSync(false, t("syncFailed")); });
+        (err) => {
+          console.error(err);
+          setSync(false, t("syncFailed"));
+          onError?.(err);
+        });
     },
     async add(entry) {
       const documentRef = await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid });
@@ -601,6 +606,7 @@ let HISTORY_FILTER = null;
 let HISTORY_SEARCH = "";
 let HISTORY_PAGE = 1;
 let OPEN_SWIPE_ROW = null;
+let GROUP_DATA_LOADING = false;
 const HISTORY_PAGE_SIZE = 10;
 
 function subjectName(personKey) {
@@ -633,7 +639,52 @@ function splitLabel(entry) {
   return "50/50";
 }
 
-function render() { renderBalance(); renderHistory(); renderRecurringSettings(); }
+function renderLoadingState() {
+  document.getElementById("saldo-card").setAttribute("aria-busy", "true");
+  document.getElementById("history-list").setAttribute("aria-busy", "true");
+  const heading = document.getElementById("balance-heading");
+  heading.classList.remove("is-positive");
+  heading.innerHTML = '<span class="skeleton-block skeleton-balance"></span>';
+  document.getElementById("balance-sub").innerHTML = '<span class="skeleton-block skeleton-copy"></span>';
+  document.getElementById("balance-show-all").hidden = true;
+  document.getElementById("swish-suggestions").hidden = true;
+  document.getElementById("swish-suggestions").replaceChildren();
+  document.getElementById("settle-btn").hidden = true;
+  document.getElementById("settle-panel").hidden = true;
+
+  const totals = document.getElementById("totals");
+  totals.hidden = false;
+  totals.classList.remove("is-filtered");
+  totals.innerHTML = Array.from({ length: 3 }, () => `
+    <span class="history-total-skeleton">
+      <span class="skeleton-block skeleton-total-label"></span>
+      <span class="skeleton-block skeleton-total-value"></span>
+    </span>`).join("");
+
+  document.getElementById("history-list").innerHTML = Array.from({ length: 3 }, () => `
+    <li class="history-skeleton-row" aria-hidden="true">
+      <span class="skeleton-block skeleton-history-icon"></span>
+      <span class="history-skeleton-main">
+        <span class="skeleton-block skeleton-history-title"></span>
+        <span class="skeleton-block skeleton-history-sub"></span>
+      </span>
+      <span class="skeleton-block skeleton-history-amount"></span>
+    </li>`).join("");
+  document.getElementById("history-empty").hidden = true;
+  document.getElementById("history-pagination").hidden = true;
+}
+
+function render() {
+  if (GROUP_DATA_LOADING) {
+    renderLoadingState();
+    return;
+  }
+  document.getElementById("saldo-card").removeAttribute("aria-busy");
+  document.getElementById("history-list").removeAttribute("aria-busy");
+  renderBalance();
+  renderHistory();
+  renderRecurringSettings();
+}
 
 function renderRecurringSettings() {
   const section = document.getElementById("recurring-settings");
@@ -2755,12 +2806,15 @@ async function openBankbook(bankbook) {
     unsubscribeWaitingRoom = null;
   }
   activeBankbook = bankbook;
+  GROUP_DATA_LOADING = true;
+  const subscriptionToken = ++entrySubscriptionToken;
   applyExperienceMode(bankbook);
   PEOPLE = people.people;
   CURRENT_USER = people.currentSlot;
   localStorage.setItem(`bankboken-active-${signedInUser.uid}`, bankbook.id);
   renderActiveGroupName(bankbook);
   ENTRIES = [];
+  RECURRING_TEMPLATES = [];
   HISTORY_FILTER = null;
   HISTORY_SEARCH = "";
   document.getElementById("history-search").value = "";
@@ -2775,21 +2829,29 @@ async function openBankbook(bankbook) {
     updatePersonLabels();
     resetExpenseForm();
   }
+  renderLoadingState();
+  showOnly("app");
   unsubscribeEntries = store.subscribe((documents) => {
+    if (subscriptionToken !== entrySubscriptionToken || activeBankbook?.id !== bankbook.id) return;
     RECURRING_TEMPLATES = isPairExperience()
       ? documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false)
       : [];
     ENTRIES = documents.filter((item) => item.kind !== "recurringTemplate");
+    GROUP_DATA_LOADING = false;
     render();
     ensureRecurringEntries(RECURRING_TEMPLATES, new Set(documents.map((item) => item.id)));
+  }, () => {
+    if (subscriptionToken !== entrySubscriptionToken || activeBankbook?.id !== bankbook.id) return;
+    GROUP_DATA_LOADING = false;
+    render();
   });
   watchActiveBankbook(bankbook.id);
-  showOnly("app");
 }
 
 function watchActiveBankbook(bankbookId) {
   if (unsubscribeActiveBankbook) unsubscribeActiveBankbook();
   unsubscribeActiveBankbook = fs.onSnapshot(fs.doc(db, "bankbooks", bankbookId), (snapshot) => {
+    if (activeBankbook?.id !== bankbookId) return;
     if (!snapshot.exists()) return;
     const updatedBankbook = { id: snapshot.id, ...snapshot.data() };
     const people = peopleFromBankbook(updatedBankbook);
@@ -2805,7 +2867,10 @@ function watchActiveBankbook(bankbookId) {
       updatePreview();
       render();
     }
-  }, (error) => setSync(false, error.message));
+  }, (error) => {
+    if (activeBankbook?.id !== bankbookId) return;
+    setSync(false, error.message);
+  });
 }
 
 function updateAuthLabels() {
@@ -3434,7 +3499,11 @@ async function initializeFirebase() {
   firebaseApp = appApi.initializeApp(FIREBASE_CONFIG, "bankboken-multi");
   db = fs.getFirestore(firebaseApp);
   auth = authApi.getAuth(firebaseApp);
-  await authApi.setPersistence(auth, authApi.browserSessionPersistence);
+  try {
+    await authApi.setPersistence(auth, authApi.browserLocalPersistence);
+  } catch {
+    await authApi.setPersistence(auth, authApi.browserSessionPersistence);
+  }
   authApi.onAuthStateChanged(auth, async (user) => {
     signedInUser = user;
     if (!user) {
