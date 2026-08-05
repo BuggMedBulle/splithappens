@@ -83,7 +83,7 @@ const TRANSLATIONS = {
     groceries: "Matvaror", restaurantCafe: "Restaurang & café", accommodation: "Boende",
     beauty: "Skönhet", transport: "Transport", travelExperiences: "Resor/upplevelser",
     entertainment: "Nöjen", alcohol: "Alkohol", interior: "Inredning", clothing: "Kläder",
-    gadgets: "Prylar", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Streaming",
+    hobby: "Hobby", fika: "Fika", fitness: "Träning", gifts: "Presenter", streaming: "Streaming",
     receipt: "Kvitto", addReceipt: "Lägg till bild", changeReceipt: "Byt bild", removeReceipt: "Ta bort",
     receiptPreview: "Förhandsvisning av kvitto", receiptTooLarge: "Bilden är för stor. Välj en bild under 15 MB.",
     receiptInvalid: "Bilden kunde inte läsas. Prova en annan bild.", receiptUploadFailed: "Kvittot kunde inte laddas upp. Försök igen.",
@@ -152,7 +152,7 @@ const TRANSLATIONS = {
     groceries: "Groceries", restaurantCafe: "Restaurant & café", accommodation: "Accommodation",
     beauty: "Beauty", transport: "Transport", travelExperiences: "Travel & experiences",
     entertainment: "Entertainment", alcohol: "Alcohol", interior: "Home decor", clothing: "Clothing",
-    gadgets: "Gadgets", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Streaming",
+    hobby: "Hobby", fika: "Coffee & cake", fitness: "Fitness", gifts: "Gifts", streaming: "Streaming",
     receipt: "Receipt", addReceipt: "Add image", changeReceipt: "Change image", removeReceipt: "Remove",
     receiptPreview: "Receipt preview", receiptTooLarge: "The image is too large. Choose an image under 15 MB.",
     receiptInvalid: "The image could not be read. Try another image.", receiptUploadFailed: "The receipt could not be uploaded. Please try again.",
@@ -629,7 +629,7 @@ const STATISTICS_CATEGORY_KEYS = {
   "🍺": "alcohol",
   "🛋️": "interior",
   "🛍️": "clothing",
-  "📷": "gadgets",
+  "🎮": "hobby",
   "☕": "fika",
   "🏋️": "fitness",
   "🎁": "gifts",
@@ -638,6 +638,7 @@ const STATISTICS_CATEGORY_KEYS = {
 };
 
 const STATISTICS_CATEGORY_ALIASES = {
+  "📷": "🎮",
   "🍰": "☕",
   "🧼": "💄",
   "🏟️": "🎟️",
