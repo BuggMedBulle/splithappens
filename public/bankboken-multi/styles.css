@@ -62,10 +62,6 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 button { font-family: inherit; cursor: pointer; }
-.prototype-label {
-  margin: -10px 0 20px; color: var(--ink-3); font-size: 0.76rem;
-  font-weight: 700; letter-spacing: 0.08em; text-align: center; text-transform: uppercase;
-}
 .brand small {
   margin-left: 6px; color: var(--ink-3); font-family: var(--font-body);
   font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
