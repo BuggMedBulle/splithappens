@@ -630,7 +630,7 @@ const STATISTICS_CATEGORY_KEYS = {
   "🛋️": "interior",
   "🛍️": "clothing",
   "📷": "gadgets",
-  "🍰": "fika",
+  "☕": "fika",
   "🏋️": "fitness",
   "🎁": "gifts",
   "📺": "streaming",
@@ -638,6 +638,7 @@ const STATISTICS_CATEGORY_KEYS = {
 };
 
 const STATISTICS_CATEGORY_ALIASES = {
+  "🍰": "☕",
   "🧼": "💄",
   "🏟️": "🎟️",
   "🎬": "🎟️",
