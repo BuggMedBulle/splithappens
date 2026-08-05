@@ -783,6 +783,11 @@ function makeSwipeableRow(row, entry, onOpen) {
   return content;
 }
 
+function setBalanceHeading(heading, amount) {
+  heading.textContent = kr(amount);
+  heading.classList.toggle("is-positive", amount > 0.005);
+}
+
 function renderBalance() {
   if (usesGroupExperience()) {
     renderGroupBalance();
@@ -800,7 +805,7 @@ function renderBalance() {
   panel.hidden = true;
   btn.hidden = true;
   if (Math.abs(bal) < 0.01) {
-    heading.textContent = kr(0);
+    setBalanceHeading(heading, 0);
     sub.textContent = t("allEven");
     return;
   }
@@ -810,7 +815,7 @@ function renderBalance() {
   const creditor = PEOPLE[creditorKey];
   const owed = Math.abs(bal);
 
-  heading.textContent = kr(CURRENT_USER === debtorKey ? -owed : owed);
+  setBalanceHeading(heading, CURRENT_USER === debtorKey ? -owed : owed);
   const owesVerb = t(debtorKey === CURRENT_USER ? "oweSelf" : "owesOther");
   sub.innerHTML = `<strong>${escapeHtml(subjectName(debtorKey))}</strong> ${owesVerb} ${escapeHtml(objectName(creditorKey))}`;
   if (CURRENT_USER !== debtorKey) return;
@@ -832,8 +837,12 @@ function renderGroupBalance() {
   const ownTransactions = plan.filter((transaction) => transaction.fromUid === ownMemberId || transaction.toUid === ownMemberId);
   const showAllButton = document.getElementById("balance-show-all");
   const suggestions = document.getElementById("swish-suggestions");
+  const hasAdditionalGroupTransactions = plan.some((transaction) => (
+    transaction.fromUid !== ownMemberId && transaction.toUid !== ownMemberId
+  ));
 
-  showAllButton.hidden = !plan.length;
+  if (!hasAdditionalGroupTransactions) SHOW_ALL_GROUP_DEBTS = false;
+  showAllButton.hidden = !hasAdditionalGroupTransactions;
   showAllButton.setAttribute("aria-expanded", String(SHOW_ALL_GROUP_DEBTS));
   showAllButton.querySelector("span").textContent = t(SHOW_ALL_GROUP_DEBTS ? "hideAll" : "showAll");
 
@@ -860,7 +869,7 @@ function renderGroupBalance() {
   btn.disabled = false;
   document.getElementById("swish-suggestions").hidden = true;
   if (!ownTransactions.length) {
-    heading.textContent = kr(0);
+    setBalanceHeading(heading, 0);
     sub.textContent = t("balanceSettled");
     renderRoutes();
     return;
@@ -869,7 +878,7 @@ function renderGroupBalance() {
   if (ownTransactions.length > 1) {
     const net = ownTransactions.reduce((sum, transaction) => sum + (transaction.toUid === ownMemberId ? transaction.amount : -transaction.amount), 0);
     const outgoingTransactions = ownTransactions.filter((transaction) => transaction.fromUid === ownMemberId);
-    heading.textContent = kr(net);
+    setBalanceHeading(heading, net);
     if (outgoingTransactions.length === ownTransactions.length) {
       const recipientNames = outgoingTransactions.map((transaction) => (
         profiles.find(([profileUid]) => profileUid === transaction.toUid)?.[1]?.name
@@ -889,7 +898,7 @@ function renderGroupBalance() {
   const otherUid = currentUserOwes ? transaction.toUid : transaction.fromUid;
   const profile = profiles.find(([profileUid]) => profileUid === otherUid)?.[1];
   const name = profile?.name || t("anotherMember");
-  heading.textContent = kr(currentUserOwes ? -transaction.amount : transaction.amount);
+  setBalanceHeading(heading, currentUserOwes ? -transaction.amount : transaction.amount);
   sub.innerHTML = currentUserOwes
     ? `<strong>${escapeHtml(t("you"))}</strong> ${t("oweSelf")} ${escapeHtml(name)}`
     : `<strong>${escapeHtml(name)}</strong> ${t("owesOther")} ${escapeHtml(t("youObject"))}`;
