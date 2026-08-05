@@ -36,7 +36,7 @@ let SHOW_ALL_GROUP_DEBTS = false;
 const TRANSLATIONS = {
   sv: {
     authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
-    email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", createAccount: "Skapa ett konto",
+    email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", loggingIn: "Loggar in…", createAccount: "Skapa ett konto", creating: "Skapar konto…",
     forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in fler personer", chooseGroup: "Välj grupp", createGroup: "+ Skapa ny grupp",
     newGroupTitle: "Skapa ny grupp", groupName: "Gruppnamn", profileName: "Profilnamn", saveGroup: "Spara",
     groupCreated: "Gruppen är skapad. Bjud in fler med länken:", continueToGroup: "Fortsätt till gruppen",
@@ -85,7 +85,7 @@ const TRANSLATIONS = {
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
-    email: "Email", password: "Password, at least 6 characters", login: "Log in", createAccount: "Create an account",
+    email: "Email", password: "Password, at least 6 characters", login: "Log in", loggingIn: "Logging in…", createAccount: "Create an account", creating: "Creating account…",
     forgotPassword: "Forgot password?", inviteOther: "Invite more people", chooseGroup: "Choose group", createGroup: "+ Create new group",
     newGroupTitle: "Create new group", groupName: "Group name", profileName: "Profile name", saveGroup: "Save",
     groupCreated: "Your group is ready. Invite others with this link:", continueToGroup: "Continue to group",
@@ -2788,13 +2788,19 @@ document.getElementById("auth-reset").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("auth-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
+let authSubmitting = false;
+
+async function submitAuthForm() {
+  if (authSubmitting) return;
+  const submitButton = document.getElementById("auth-submit");
+  authSubmitting = true;
+  submitButton.disabled = true;
   document.getElementById("auth-error").hidden = true;
   document.getElementById("auth-success").hidden = true;
   const email = document.getElementById("auth-email").value.trim();
   const password = document.getElementById("auth-password").value;
   try {
+    submitButton.textContent = t(registrationMode ? "creating" : "loggingIn");
     if (registrationMode) {
       const credential = profileCompletionMode
         ? { user: signedInUser }
@@ -2817,7 +2823,21 @@ document.getElementById("auth-form").addEventListener("submit", async (event) =>
     }
   } catch (error) {
     showError("auth-error", error);
+  } finally {
+    authSubmitting = false;
+    submitButton.disabled = false;
+    updateAuthLabels();
   }
+}
+
+document.getElementById("auth-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitAuthForm();
+});
+
+document.getElementById("auth-submit").addEventListener("click", (event) => {
+  event.preventDefault();
+  submitAuthForm();
 });
 
 async function joinBankbook(code) {
