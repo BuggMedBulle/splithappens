@@ -1302,6 +1302,21 @@ function selectedMultiParticipants() {
   return [...document.querySelectorAll('#multi-participants input[type="checkbox"]:checked')].map((input) => input.value);
 }
 
+function updateMultiParticipantAmounts() {
+  const participantRows = [...document.querySelectorAll("#multi-participants .multi-participant")];
+  if (!participantRows.length) return;
+
+  const amount = parseFloat(document.getElementById("e-amount").value) || 0;
+  const selectedCount = selectedMultiParticipants().length;
+  const amountPerPerson = selectedCount > 0 ? amount / selectedCount : 0;
+
+  participantRows.forEach((row) => {
+    const input = row.querySelector('input[type="checkbox"]');
+    const amountLabel = row.querySelector("[data-participant-amount]");
+    if (amountLabel) amountLabel.textContent = kr(input?.checked ? amountPerPerson : 0);
+  });
+}
+
 function setMultiSplitMode(mode) {
   MULTI_SPLIT_MODE = mode === "custom" ? "custom" : "equal";
   document.querySelectorAll("#e-multi-split-mode [data-multi-split]").forEach((button) => {
@@ -1340,9 +1355,10 @@ function renderMultiExpenseControls(entry = null) {
   document.getElementById("multi-participants").innerHTML = profiles.map(([uid, profile], index) => {
     const name = uid === ownMemberId ? t("you") : profile.name;
     const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
-    return `<label class="multi-participant" style="--profile-color:${color}"><input type="checkbox" value="${escapeHtml(uid)}" ${savedParticipants.has(uid) ? "checked" : ""}><span>${escapeHtml(name)}</span></label>`;
+    return `<label class="multi-participant" style="--profile-color:${color}"><input type="checkbox" value="${escapeHtml(uid)}" ${savedParticipants.has(uid) ? "checked" : ""}><span class="multi-participant-name">${escapeHtml(name)}</span><span class="multi-participant-amount" data-participant-amount></span></label>`;
   }).join("");
   setMultiSplitMode(entry?.multiSplitMode || "equal");
+  updateMultiParticipantAmounts();
 }
 
 function updatePersonLabels() {
@@ -2132,6 +2148,7 @@ async function startEditing(entry) {
 function updatePreview() {
   const amount = parseFloat(document.getElementById("e-amount").value) || 0;
   updateCustomSplitLabels();
+  updateMultiParticipantAmounts();
   const type = getEntryType();
   const split = getSplit(); // 'a' | 'even' | 'b'
   const payer = payerKey();

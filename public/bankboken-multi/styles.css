@@ -540,6 +540,13 @@ html[data-theme="dark"] .multi-payer-menu-avatar { background: var(--profile-col
 .multi-participant input::after { content: "✓"; color: #fff; font-size: 0.8rem; font-weight: 800; transform: scale(0); }
 .multi-participant input:checked { background: var(--profile-color); }
 .multi-participant input:checked::after { transform: scale(1); }
+.multi-participant-name {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.multi-participant-amount {
+  margin-left: auto; color: var(--ink-2); font-family: var(--font-num); font-size: 0.9rem;
+  font-weight: 450; white-space: nowrap;
+}
 #settings-language button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 #settings-language img { display: block; width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
 #settings-theme button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
