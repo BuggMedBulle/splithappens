@@ -705,6 +705,7 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
   display: block; color: var(--ink); font-family: var(--font-num);
   font-size: clamp(2rem, 10vw, 2.8rem); font-weight: 400; letter-spacing: -0.04em;
 }
+.statistics-summary > strong.is-credit { color: var(--success); }
 .statistics-count { margin: 5px 0 0; color: var(--ink-3); font-size: 0.78rem; }
 .statistics-recurring-summary {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 16px; align-items: baseline;
@@ -726,8 +727,13 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
 }
 .statistics-pie-legend { display: grid; gap: 10px; min-width: 0; }
 .statistics-pie-legend-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0;
+  display: flex; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-radius: 10px;
+  align-items: center; justify-content: space-between; gap: 12px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
+.statistics-pie-legend-row:hover { background: var(--field); }
+.statistics-pie-legend-row.is-active { background: var(--field); box-shadow: inset 0 0 0 1px var(--line); }
+.statistics-pie-legend.has-filter .statistics-pie-legend-row:not(.is-active) { opacity: 0.48; }
 .statistics-pie-legend-row > span {
   display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden;
   font-size: 0.82rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap;
@@ -736,6 +742,7 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
   flex: 0 0 auto; font-family: var(--font-num); font-size: 0.8rem; font-weight: 500;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+.statistics-pie-legend-row.is-credit > strong { color: var(--success); }
 .statistics-pie-legend-row small { margin-left: 3px; color: var(--ink-3); font-size: 0.68rem; font-weight: 500; }
 .statistics-row { display: grid; gap: 7px; }
 .statistics-row-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
@@ -751,6 +758,8 @@ body:has(.edit-modal:not([hidden])) { overflow: hidden; }
   display: block; width: 0; height: 100%; border-radius: inherit;
   background: var(--statistics-color, var(--ink-2)); transition: width 0.25s ease;
 }
+.statistics-category-row.is-credit .statistics-row-head > strong { color: var(--success); }
+.statistics-category-row.is-credit .statistics-bar i { background: var(--success); }
 .statistics-note { margin: 26px 0 0; color: var(--ink-3); font-size: 0.74rem; line-height: 1.45; }
 
 html[data-theme="dark"] #settings-trigger img,
