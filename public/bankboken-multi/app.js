@@ -370,8 +370,14 @@ function entryPayerUid(entry, profiles = activeGroupProfiles()) {
   return entry.payerUid || profiles.find(([, profile]) => profile.slot === entry.payer)?.[0] || "";
 }
 
+function groupExperienceType(bankbook = activeBankbook) {
+  if (["pair", "group"].includes(bankbook?.groupType)) return bankbook.groupType;
+  if (bankbook?.demoMode === true || bankbook?.multiGroup === true) return "group";
+  return "pair";
+}
+
 function isPairExperience(bankbook = activeBankbook) {
-  return activeGroupProfiles(bankbook).length === 2;
+  return groupExperienceType(bankbook) === "pair";
 }
 
 function usesGroupExperience(bankbook = activeBankbook) {
@@ -538,6 +544,8 @@ const kr0 = (n) =>
 //  RENDER
 // ============================================================
 let ENTRIES = [];
+let RECURRING_TEMPLATES = [];
+let GENERATING_RECURRING = false;
 let CURRENT_USER = localStorage.getItem("bankboken-person");
 let APP_INITIALIZED = false;
 let HISTORY_FILTER = null;
@@ -576,7 +584,61 @@ function splitLabel(entry) {
   return "50/50";
 }
 
-function render() { renderBalance(); renderHistory(); }
+function render() { renderBalance(); renderHistory(); renderRecurringSettings(); }
+
+function renderRecurringSettings() {
+  const section = document.getElementById("recurring-settings");
+  const list = document.getElementById("recurring-settings-list");
+  const empty = document.getElementById("recurring-settings-empty");
+  if (!section || !list || !empty) return;
+  section.hidden = !isPairExperience();
+  list.replaceChildren();
+  empty.hidden = RECURRING_TEMPLATES.length > 0;
+  RECURRING_TEMPLATES.forEach((template) => {
+    const item = document.createElement("div");
+    item.className = "recurring-settings-item";
+    const day = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
+    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${day}:e varje månad</small></span><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">Avsluta</button>`;
+    list.appendChild(item);
+  });
+}
+
+function nextMonthlyOccurrence(dateValue, preferredDay) {
+  const [year, month] = dateValue.split("-").map(Number);
+  const nextMonth = new Date(year, month, 1);
+  const day = Math.min(Number(preferredDay) || 1, new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate());
+  return `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+async function ensureRecurringEntries(templates, existingIds) {
+  if (!isPairExperience() || GENERATING_RECURRING || !store) return;
+  GENERATING_RECURRING = true;
+  try {
+    const today = todayInputValue();
+    for (const template of templates) {
+      const preferredDay = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
+      let occurrenceDate = template.generatedThrough ? nextMonthlyOccurrence(template.generatedThrough, preferredDay) : template.startDate;
+      let latestDate = template.generatedThrough || "";
+      let generated = 0;
+      while (occurrenceDate && occurrenceDate <= today && generated < 120) {
+        const occurrenceId = `recurring-${template.id}-${occurrenceDate}`;
+        if (!existingIds.has(occurrenceId)) {
+          await store.createIfMissing(occurrenceId, {
+            type: "expense", desc: template.desc, amount: template.amount, icon: template.icon || ICON_DEFAULT,
+            payer: template.payer, split: template.split || "even", shareA: template.shareA ?? null,
+            excludedAmount: 0, ts: expenseTimestamp(occurrenceDate), recurringId: template.id, recurringOccurrence: occurrenceDate,
+          });
+          existingIds.add(occurrenceId);
+        }
+        latestDate = occurrenceDate;
+        occurrenceDate = nextMonthlyOccurrence(occurrenceDate, preferredDay);
+        generated += 1;
+      }
+      if (latestDate && latestDate !== template.generatedThrough) await store.update(template.id, { generatedThrough: latestDate });
+    }
+  } catch (error) { console.error(error); setSync(false, t("syncFailed")); }
+  finally { GENERATING_RECURRING = false; }
+}
 
 function closeSwipeRow(row = OPEN_SWIPE_ROW) {
   if (!row) return;
@@ -1239,6 +1301,9 @@ function onSplitChange(split) {
 
 function onEntryTypeChange(type) {
   const isIncome = type === "income";
+  const recurringField = document.getElementById("recurring-field");
+  recurringField.hidden = !isPairExperience() || isIncome || Boolean(EDITING_ID);
+  if (recurringField.hidden) document.getElementById("e-recurring").checked = false;
   document.getElementById("expense-heading").textContent = EDITING_ID
     ? t(isIncome ? "editIncome" : "editExpense")
     : t("add");
@@ -1878,6 +1943,7 @@ function resetExpenseForm() {
   document.getElementById("edit-delete").hidden = true;
   document.getElementById("e-receipt").value = "";
   document.querySelector(".receipt-field").hidden = false;
+  document.getElementById("e-recurring").checked = false;
   pendingReceiptData = "";
   removeExistingReceipt = false;
   receiptOcrRequest += 1;
@@ -2244,6 +2310,7 @@ function initApp() {
     if (!desc || !(amount > 0) || !date) return;
     const type = getEntryType();
     const split = getSplit();
+    const recurring = isPairExperience() && type === "expense" && !EDITING_ID && document.getElementById("e-recurring").checked;
     const participantUids = MULTI_EXPENSE_MODE
       ? (MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().map(([uid]) => uid) : selectedMultiParticipants())
       : [];
@@ -2278,7 +2345,17 @@ function initApp() {
     showReceiptError();
     let createdEntryId = "";
     try {
-      const entryId = EDITING_ID || await store.add(expense);
+      let recurringId = "";
+      if (recurring) {
+        recurringId = await store.createRecurring({
+          kind: "recurringTemplate", active: true, interval: "monthly",
+          desc: expense.desc, amount: expense.amount, icon: expense.icon,
+          payer: expense.payer, split: expense.split, shareA: expense.shareA,
+          startDate: date, generatedThrough: date, dayOfMonth: Number(date.split("-")[2]), ts: expense.ts,
+        });
+      }
+      const expenseToSave = recurringId ? { ...expense, recurringId, recurringOccurrence: date } : expense;
+      const entryId = EDITING_ID || await store.add(expenseToSave);
       if (!EDITING_ID) createdEntryId = entryId;
       let hasReceipt = Boolean(existingEntry?.hasReceipt);
       if (pendingReceiptData) {
@@ -2289,7 +2366,7 @@ function initApp() {
         hasReceipt = false;
       }
       if (EDITING_ID || pendingReceiptData || removeExistingReceipt) {
-        await store.update(entryId, { ...expense, hasReceipt });
+        await store.update(entryId, { ...expenseToSave, hasReceipt });
       }
       resetExpenseForm();
       document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2450,7 +2527,8 @@ function renderGroupMembers(bankbook) {
   const profiles = activeGroupProfiles(bankbook);
   const realProfiles = profiles.filter(([, profile]) => !profile.demo);
   const count = profiles.length;
-  document.getElementById("group-member-count").textContent = t("groupMemberCount", { count, max: MAX_MEMBERS });
+  const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
+  document.getElementById("group-member-count").textContent = t("groupMemberCount", { count, max: maxMembers });
   document.getElementById("group-member-list").innerHTML = profiles.map(([uid, profile], index) => {
     const name = profile.name || `Person ${index + 1}`;
     const avatar = profileAvatar(profile, name) || name.charAt(0).toUpperCase();
@@ -2461,7 +2539,7 @@ function renderGroupMembers(bankbook) {
     const ownerLabel = uid === bankbook.createdBy ? `<em class="group-owner">${LANGUAGE === "en" ? "Owner" : "Ägare"}</em>` : "";
     return `<div class="group-member${profile.demo ? " is-demo" : ""}"><i class="group-member-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(name)}${escapeHtml(selfLabel)}${ownerLabel}${demoLabel}</span></div>`;
   }).join("");
-  const full = realProfiles.length >= MAX_MEMBERS;
+  const full = realProfiles.length >= maxMembers;
   document.getElementById("invite-panel").hidden = full;
   document.getElementById("group-status").textContent = full ? t("groupFull") : t("groupReadyHelp");
 }
@@ -2537,11 +2615,13 @@ async function refreshBankbookMenu(autoOpen = true) {
   renderBankbookMenu(bankbooks);
 }
 
-async function createAutomaticBankbook({ groupName, profileName, color, avatarMode, avatarEmoji }) {
+async function createAutomaticBankbook({ groupName, profileName, color, avatarMode, avatarEmoji, groupType }) {
   const reference = fs.doc(fs.collection(db, "bankbooks"));
   const bankbook = {
     name: groupName,
-    multiGroup: true,
+    groupType,
+    multiGroup: groupType === "group",
+    maxMembers: groupType === "pair" ? 2 : MAX_MEMBERS,
     createdBy: signedInUser.uid,
     memberIds: [signedInUser.uid],
     members: {
@@ -2622,8 +2702,12 @@ async function openBankbook(bankbook) {
     resetExpenseForm();
   }
   unsubscribeEntries = store.subscribe((documents) => {
+    RECURRING_TEMPLATES = isPairExperience()
+      ? documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false)
+      : [];
     ENTRIES = documents.filter((item) => item.kind !== "recurringTemplate");
     render();
+    ensureRecurringEntries(RECURRING_TEMPLATES, new Set(documents.map((item) => item.id)));
   });
   watchActiveBankbook(bankbook.id);
   showOnly("app");
@@ -2744,7 +2828,8 @@ async function joinBankbook(code) {
       if (!snapshot.exists()) throw new Error("Inbjudningskoden finns inte.");
       const bankbook = snapshot.data();
       if (bankbook.memberIds.includes(signedInUser.uid)) return;
-      if (bankbook.memberIds.length >= MAX_MEMBERS) throw new Error("Den här gruppen har redan tio personer.");
+      const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
+      if (bankbook.memberIds.length >= maxMembers) throw new Error(maxMembers === 2 ? "Den här gruppen har redan två personer." : "Den här gruppen har redan tio personer.");
       const usedSlots = new Set(Object.values(bankbook.members || {}).map((member) => member.slot));
       const slot = MEMBER_SLOTS.find((candidate) => !usedSlots.has(candidate));
       if (!slot) throw new Error("Det finns ingen ledig plats i gruppen.");
@@ -2806,6 +2891,9 @@ function openCreateGroup() {
   AVATAR_TARGET = "create";
   document.getElementById("create-group-name").value = "";
   document.getElementById("create-group-profile-name").value = userProfile.name || "";
+  document.querySelectorAll("#create-group-type [data-group-type]").forEach((button) =>
+    button.classList.toggle("active", button.dataset.groupType === "pair"));
+  document.getElementById("create-group-type-help").textContent = "För två personer, inklusive stående betalningar.";
   SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : defaultProfileColor(signedInUser.uid);
   SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
   SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
@@ -2824,6 +2912,14 @@ document.getElementById("create-group-modal").addEventListener("click", (event) 
   if (event.target === event.currentTarget) closeCreateGroup();
 });
 document.getElementById("create-group-profile-name").addEventListener("input", updateAvatarSettings);
+document.getElementById("create-group-type").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-group-type]");
+  if (!button) return;
+  document.querySelectorAll("#create-group-type [data-group-type]").forEach((option) => option.classList.toggle("active", option === button));
+  document.getElementById("create-group-type-help").textContent = button.dataset.groupType === "pair"
+    ? "För två personer, inklusive stående betalningar."
+    : "För 3–10 personer, utan stående betalningar.";
+});
 document.getElementById("create-group-avatar-trigger").addEventListener("click", () => {
   AVATAR_TARGET = "create";
   AVATAR_MODAL_ORIGINAL = {
@@ -2839,6 +2935,7 @@ document.getElementById("create-group-form").addEventListener("submit", async (e
   event.preventDefault();
   const groupName = document.getElementById("create-group-name").value.trim();
   const profileName = document.getElementById("create-group-profile-name").value.trim();
+  const groupType = document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
   if (!groupName || !profileName) return;
   const saveButton = document.getElementById("create-group-save");
   saveButton.disabled = true;
@@ -2851,6 +2948,7 @@ document.getElementById("create-group-form").addEventListener("submit", async (e
       color: SETTINGS_COLOR,
       avatarMode,
       avatarEmoji: avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "",
+      groupType,
     });
     activeBankbook = CREATED_BANKBOOK;
     document.getElementById("create-group-invite-link").value = invitationUrl(CREATED_BANKBOOK.id);
@@ -3033,6 +3131,14 @@ document.getElementById("settings-theme").addEventListener("click", (event) => {
   THEME = button.dataset.theme;
   localStorage.setItem("split-happens-theme", THEME);
   applyTheme();
+});
+
+document.getElementById("recurring-settings-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-recurring-stop]");
+  if (!button || !confirm("Avsluta den stående betalningen? Redan skapade utgifter behålls.")) return;
+  button.disabled = true;
+  try { await store.remove(button.dataset.recurringStop); }
+  catch (error) { console.error(error); button.disabled = false; setSync(false, t("syncFailed")); }
 });
 
 document.getElementById("settings-close").addEventListener("click", closeSettings);

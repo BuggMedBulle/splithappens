@@ -448,6 +448,24 @@ body:has(.receipt-lightbox:not([hidden])) { overflow: hidden; }
   color: var(--ink-2); font-family: var(--font-num); font-size: 1rem; pointer-events: none;
 }
 
+.field-help { display: block; margin-top: 8px; color: var(--ink-2); font-size: 0.75rem; line-height: 1.4; }
+.recurring-field { position: relative; display: flex; align-items: center; gap: 12px; margin: -4px 0 20px; padding: 13px 14px; border-radius: var(--r-field); background: var(--field); cursor: pointer; }
+.recurring-field input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.recurring-check { display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; border: 2px solid var(--ink-2); border-radius: 7px; color: transparent; font-size: 0.8rem; font-weight: 800; }
+.recurring-field input:checked + .recurring-check { border-color: var(--ink); background: var(--ink); color: var(--card); }
+.recurring-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.recurring-copy strong { color: var(--ink); font-size: 0.88rem; font-weight: 600; }
+.recurring-copy small { color: var(--ink-2); font-size: 0.73rem; line-height: 1.35; }
+.recurring-settings { margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--line); }
+.recurring-settings h3 { margin: 0 0 12px; font-size: 0.98rem; }
+.recurring-settings-list { display: grid; gap: 8px; }
+.recurring-settings-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 12px; background: var(--field); }
+.recurring-settings-item span { display: flex; flex-direction: column; min-width: 0; }
+.recurring-settings-item strong { overflow: hidden; font-size: 0.84rem; text-overflow: ellipsis; white-space: nowrap; }
+.recurring-settings-item small { color: var(--ink-2); font-family: var(--font-num); font-size: 0.72rem; }
+.recurring-stop { padding: 7px 9px; border: 1px solid var(--danger); border-radius: 9px; background: transparent; color: var(--danger); font: inherit; font-size: 0.72rem; font-weight: 650; }
+.recurring-settings-empty { margin: 0; color: var(--ink-2); font-size: 0.8rem; }
+
 /* Segmented control */
 .seg {
   display: flex; gap: 4px; padding: 4px;

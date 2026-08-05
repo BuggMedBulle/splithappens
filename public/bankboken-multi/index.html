@@ -172,6 +172,15 @@
             <input id="e-date" type="date" required />
           </label>
 
+          <label id="recurring-field" class="recurring-field" hidden>
+            <input id="e-recurring" type="checkbox" />
+            <span class="recurring-check" aria-hidden="true">✓</span>
+            <span class="recurring-copy">
+              <strong>Återkommande varje månad</strong>
+              <small>Skapas automatiskt samma dag varje månad.</small>
+            </span>
+          </label>
+
 
           <div class="field">
             <span class="field-label" id="payer-label">Betalat av</span>
@@ -268,6 +277,14 @@
           <span class="field-label" data-i18n="groupName">Gruppnamn</span>
           <input id="create-group-name" type="text" maxlength="60" required autocomplete="off" />
         </label>
+        <div class="field">
+          <span class="field-label">Gruppstorlek</span>
+          <div class="seg" id="create-group-type">
+            <button type="button" data-group-type="pair" class="active">2 personer</button>
+            <button type="button" data-group-type="group">Fler</button>
+          </div>
+          <small id="create-group-type-help" class="field-help">För två personer, inklusive stående betalningar.</small>
+        </div>
         <div class="settings-identity-row">
           <div class="field settings-avatar-field">
             <span class="field-label" data-i18n="avatar">Avatar</span>
@@ -349,6 +366,11 @@
             <button type="button" data-theme="dark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-i18n="darkTheme">Mörkt</span></button>
           </div>
         </div>
+        <section id="recurring-settings" class="recurring-settings" hidden>
+          <h3>Stående betalningar</h3>
+          <div id="recurring-settings-list" class="recurring-settings-list"></div>
+          <p id="recurring-settings-empty" class="recurring-settings-empty">Inga stående betalningar.</p>
+        </section>
         <button type="submit" class="btn-primary" data-i18n="saveChanges">Spara ändringar</button>
       </form>
       <button id="delete-group" class="delete-group" type="button">Ta bort grupp</button>
