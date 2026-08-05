@@ -2893,7 +2893,6 @@ function openCreateGroup() {
   document.getElementById("create-group-profile-name").value = userProfile.name || "";
   document.querySelectorAll("#create-group-type [data-group-type]").forEach((button) =>
     button.classList.toggle("active", button.dataset.groupType === "pair"));
-  document.getElementById("create-group-type-help").textContent = "För två personer, inklusive stående betalningar.";
   SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : defaultProfileColor(signedInUser.uid);
   SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
   SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
@@ -2916,9 +2915,6 @@ document.getElementById("create-group-type").addEventListener("click", (event) =
   const button = event.target.closest("[data-group-type]");
   if (!button) return;
   document.querySelectorAll("#create-group-type [data-group-type]").forEach((option) => option.classList.toggle("active", option === button));
-  document.getElementById("create-group-type-help").textContent = button.dataset.groupType === "pair"
-    ? "För två personer, inklusive stående betalningar."
-    : "För 3–10 personer, utan stående betalningar.";
 });
 document.getElementById("create-group-avatar-trigger").addEventListener("click", () => {
   AVATAR_TARGET = "create";
