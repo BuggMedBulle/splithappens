@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=larger-group-name-2" />
+  <link rel="stylesheet" href="styles.css?v=light-group-color-20260805" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -175,8 +175,8 @@
             <input id="e-recurring" type="checkbox" />
             <span class="recurring-check" aria-hidden="true">✓</span>
             <span class="recurring-copy">
-              <strong>Återkommande varje månad</strong>
-              <small>Skapas automatiskt samma dag varje månad.</small>
+              <strong data-i18n="recurringMonthly">Återkommande varje månad</strong>
+              <small data-i18n="recurringMonthlyHelp">Skapas automatiskt samma dag varje månad.</small>
             </span>
           </label>
 
@@ -221,8 +221,8 @@
             </div>
             <div id="multi-split" class="multi-split" hidden>
               <div class="seg" id="e-multi-split-mode">
-                <button type="button" data-multi-split="equal" class="active">Dela lika</button>
-                <button type="button" data-multi-split="custom">Anpassad</button>
+                <button type="button" data-multi-split="equal" class="active" data-i18n="splitEqually">Dela lika</button>
+                <button type="button" data-multi-split="custom" data-i18n="custom">Anpassad</button>
               </div>
               <div id="multi-participants" class="multi-participants" hidden></div>
             </div>
@@ -271,39 +271,54 @@
     <div class="edit-modal-card create-group-card">
       <button id="create-group-close" class="settings-close" type="button" aria-label="Stäng" data-i18n-aria="cancel"><img src="modal-close.svg" alt="" /></button>
       <h2 id="create-group-title" data-i18n="newGroupTitle">Skapa ny grupp</h2>
-      <form id="create-group-form">
-        <label class="field">
-          <span class="field-label" data-i18n="groupName">Gruppnamn</span>
-          <input id="create-group-name" type="text" maxlength="60" required autocomplete="off" />
-        </label>
+      <form id="create-group-form" novalidate>
         <div class="field">
-          <span class="field-label">Gruppstorlek</span>
+          <span class="field-label" data-i18n="groupSize">Gruppstorlek</span>
           <div class="seg" id="create-group-type">
-            <button type="button" data-group-type="pair" class="active">Par (2 pers)</button>
-            <button type="button" data-group-type="group">Grupp (3–10 pers)</button>
+            <button type="button" data-group-type="pair" class="active" data-i18n="pairSize">Par (2 pers)</button>
+            <button type="button" data-group-type="group" data-i18n="multiSize">Grupp (3–10 pers)</button>
           </div>
         </div>
-        <div class="settings-identity-row">
-          <div class="field settings-avatar-field">
-            <span class="field-label" data-i18n="avatar">Avatar</span>
-            <button id="create-group-avatar-trigger" class="settings-avatar-trigger" type="button" aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Anpassa avatar" data-i18n-aria="customizeAvatar">J</button>
+        <label class="field">
+          <span id="create-group-name-label" class="field-label">Gruppnamn (valfritt)</span>
+          <input id="create-group-name" type="text" maxlength="60" autocomplete="off" />
+          <span id="create-group-name-error" class="field-error" hidden></span>
+        </label>
+        <div class="field create-group-participants">
+          <span class="field-label create-group-members-title" data-i18n="participants">Deltagare</span>
+          <p id="create-group-participants-help" class="field-help">Personen väljer sitt namn när hen ansluter.</p>
+          <div class="create-group-participant-shell">
+            <div class="create-group-profile-direct">
+              <button id="create-group-avatar-trigger" class="settings-avatar-trigger" type="button" aria-haspopup="dialog" aria-controls="avatar-modal" aria-label="Anpassa avatar" data-i18n-aria="customizeAvatar">J</button>
+              <input id="create-group-profile-name" type="text" maxlength="40" autocomplete="name" aria-label="Profilnamn" data-i18n-aria="profileName" />
+              <span class="create-group-self-label" data-i18n="you">Du</span>
+            </div>
+            <div id="create-group-participant-list" class="create-group-participant-list"></div>
+            <button id="create-group-add-participant" class="text-button create-group-add-participant" type="button" data-i18n="addParticipant">+ Lägg till person</button>
           </div>
-          <label class="field settings-name-field">
-            <span class="field-label" data-i18n="profileName">Profilnamn</span>
-            <input id="create-group-profile-name" type="text" maxlength="40" required autocomplete="name" />
-          </label>
+          <span id="create-group-profile-error" class="field-error" hidden></span>
+          <span id="create-group-participants-error" class="field-error" hidden></span>
         </div>
-        <button id="create-group-save" type="submit" class="btn-primary" data-i18n="saveGroup">Spara</button>
+        <button id="create-group-save" type="submit" class="btn-primary" data-i18n="createGroupAction">Skapa grupp</button>
       </form>
       <section id="create-group-success" class="create-group-success" hidden>
         <p data-i18n="groupCreated">Gruppen är skapad. Bjud in fler med länken:</p>
         <span class="invite-link-control">
           <input id="create-group-invite-link" type="text" readonly aria-label="Inbjudningslänk" data-i18n-aria="inviteLink" />
-          <button id="create-group-copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk"><img src="copy.svg" alt="" /></button>
+          <button id="create-group-copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk" data-i18n-aria="copyInviteLink" data-i18n-title="copyInviteLink"><img src="copy.svg" alt="" /></button>
         </span>
         <button id="create-group-continue" type="button" class="btn-primary" data-i18n="continueToGroup">Fortsätt till gruppen</button>
       </section>
       <p id="create-group-error" class="error" hidden></p>
+    </div>
+  </div>
+
+  <div id="claim-member-modal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="claim-member-title" hidden>
+    <div class="edit-modal-card claim-member-card">
+      <button id="claim-member-close" class="settings-close" type="button" aria-label="Avbryt" data-i18n-aria="cancel"><img src="modal-close.svg" alt="" /></button>
+      <h2 id="claim-member-title" data-i18n="whoAreYou">Vem är du?</h2>
+      <p data-i18n="chooseYourProfile">Välj din profil för att ansluta till gruppen.</p>
+      <div id="claim-member-list" class="claim-member-list"></div>
     </div>
   </div>
 
@@ -313,14 +328,14 @@
       <h2 id="settings-title" data-i18n="settings">Inställningar</h2>
       <form id="settings-form">
         <section id="group-management" class="settings-group group-management" aria-labelledby="group-management-title" hidden>
-          <h3 id="group-management-title">Grupp</h3>
+          <h3 id="group-management-title" data-i18n="groupSection">Grupp</h3>
           <label class="field">
-            <span class="field-label">Gruppnamn</span>
+            <span class="field-label" data-i18n="groupName">Gruppnamn</span>
             <input id="settings-group-name" type="text" maxlength="60" />
           </label>
         </section>
         <section class="settings-profile" aria-labelledby="settings-profile-title">
-          <h3 id="settings-profile-title">Profil</h3>
+          <h3 id="settings-profile-title" data-i18n="profileSection">Profil</h3>
           <div class="settings-identity-row">
             <div class="field settings-avatar-field">
               <span class="field-label" data-i18n="avatar">Avatar</span>
@@ -334,17 +349,15 @@
         </section>
         <section class="settings-group group-members-settings" aria-labelledby="settings-group-title">
           <div class="group-roster-head">
-            <h3 id="settings-group-title">Medlemmar</h3>
-            <span id="group-member-count"></span>
+            <h3 id="settings-group-title" data-i18n="groupMembers">Medlemmar</h3>
           </div>
           <div id="group-member-list" class="group-member-list"></div>
-          <p id="group-status">Gruppen uppdateras automatiskt när någon ansluter.</p>
           <div id="invite-panel" class="invite-panel">
             <label class="field invite-link-field">
-              <span class="field-label">Inbjudningslänk</span>
+              <span class="field-label" data-i18n="inviteLink">Inbjudningslänk</span>
               <span class="invite-link-control">
-                <input id="invite-link" type="text" readonly aria-label="Inbjudningslänk" />
-                <button id="copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk"><img src="copy.svg" alt="" /></button>
+                <input id="invite-link" type="text" readonly aria-label="Inbjudningslänk" data-i18n-aria="inviteLink" />
+                <button id="copy-invite" type="button" aria-label="Kopiera inbjudningslänk" title="Kopiera inbjudningslänk" data-i18n-aria="copyInviteLink" data-i18n-title="copyInviteLink"><img src="copy.svg" alt="" /></button>
               </span>
             </label>
           </div>
@@ -365,13 +378,13 @@
           </div>
         </div>
         <section id="recurring-settings" class="recurring-settings" hidden>
-          <h3>Stående betalningar</h3>
+          <h3 data-i18n="recurringPayments">Stående betalningar</h3>
           <div id="recurring-settings-list" class="recurring-settings-list"></div>
-          <p id="recurring-settings-empty" class="recurring-settings-empty">Inga stående betalningar.</p>
+          <p id="recurring-settings-empty" class="recurring-settings-empty" data-i18n="noRecurringPayments">Inga stående betalningar.</p>
         </section>
         <button type="submit" class="btn-primary" data-i18n="saveChanges">Spara ändringar</button>
       </form>
-      <button id="delete-group" class="delete-group" type="button">Ta bort grupp</button>
+      <button id="delete-group" class="delete-group" type="button" data-i18n="deleteGroup">Ta bort grupp</button>
       <p id="settings-error" class="error" hidden></p>
     </div>
   </div>
@@ -439,6 +452,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=mobile-login-hotfix-20260805"></script>
+  <script type="module" src="app.js?v=group-i18n-20260805"></script>
 </body>
 </html>

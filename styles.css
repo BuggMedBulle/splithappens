@@ -5,7 +5,7 @@
   --ink-2: #78736c;
   --ink-3: #a49e95;
   --field: #f1efeb;
-  --group-choice: #e7e4df;
+  --group-choice: #f1efec;
   --seg-track: #edeae4;
   --seg-active: #ffffff;
   --line: #eceae5;
@@ -649,13 +649,70 @@ html[data-theme="dark"] #create-group-copy-invite img,
 html[data-theme="dark"] .settings-close img,
 html[data-theme="dark"] .edit-cancel img { filter: invert(1); }
 .create-group-card { align-self: center; }
-.create-group-card form { display: grid; gap: 22px; }
+.create-group-card form { display: grid; gap: 18px; }
 .create-group-card input {
   width: 100%; padding: 15px 16px; border: 1px solid transparent;
   border-radius: var(--r-field); background: var(--field); color: var(--ink); font-size: 1rem;
 }
 .create-group-card input:focus { outline: none; border-color: var(--ink); }
 .create-group-card .btn-primary { margin-top: 6px; }
+.field-help { margin: 6px 0 0; color: var(--ink-2); font-size: 0.76rem; line-height: 1.4; }
+.field-error { display: block; margin-top: 7px; color: var(--danger); font-size: 0.74rem; line-height: 1.35; }
+.field-error[hidden] { display: none; }
+.create-group-members-title { margin-bottom: 0; }
+.create-group-participant-shell {
+  margin-top: 10px; overflow: hidden; border-radius: 18px; background: var(--field);
+}
+.create-group-participant-list { display: grid; gap: 0; margin: 0; }
+.create-group-participant-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
+  min-height: 62px; padding: 8px 12px 8px 16px; border-top: 1px solid var(--line);
+}
+.create-group-participant-row input {
+  padding: 10px 0; border: 0; border-radius: 0; background: transparent;
+}
+.create-group-participant-row input:focus { border-color: transparent; }
+.create-group-participant-row button {
+  display: grid; place-items: center; width: 38px; height: 38px; align-self: center; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); font-size: 1.35rem;
+}
+.create-group-participant-row button:hover { background: var(--card); color: var(--ink); }
+.create-group-add-participant {
+  justify-self: stretch; width: 100%; min-height: 58px; margin: 0; padding: 14px 16px;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent;
+  color: var(--ink); font-size: 0.95rem; font-weight: 700; text-align: left;
+}
+.create-group-add-participant:hover { background: var(--card); }
+.create-group-profile-direct {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  min-height: 64px; padding: 10px 16px 10px 10px;
+}
+.create-group-profile-direct .settings-avatar-trigger {
+  width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%;
+}
+.create-group-profile-direct input {
+  min-width: 0; padding: 8px 0; border: 0; border-radius: 0; background: transparent;
+  color: var(--ink); font-size: 1rem; font-weight: 700;
+}
+.create-group-profile-direct input:focus { border-color: transparent; }
+.create-group-self-label {
+  padding: 5px 9px; border-radius: 999px; background: var(--card);
+  color: var(--ink-2); font-size: 0.76rem; font-weight: 700;
+}
+.claim-member-card { align-self: center; }
+.claim-member-card > p { margin: 0 0 18px; color: var(--ink-2); text-align: center; }
+.claim-member-list { display: grid; gap: 10px; }
+.claim-member-option {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--field); color: var(--ink);
+  font-size: 1rem; font-weight: 700; text-align: left;
+}
+.claim-member-option i {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 50%; background: var(--profile-color); color: #fff; font-style: normal; font-weight: 800;
+}
+.group-member.is-pending { border: 1px dashed var(--line); }
+.group-member em.group-pending { margin-left: auto; }
 .create-group-success { display: grid; gap: 18px; }
 .create-group-success[hidden] { display: none; }
 .create-group-success > p { margin: 0; color: var(--ink-2); text-align: center; }

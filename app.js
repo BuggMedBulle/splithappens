@@ -38,9 +38,14 @@ const TRANSLATIONS = {
     authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
     email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", loggingIn: "Loggar in…", createAccount: "Skapa ett konto", creating: "Skapar konto…",
     forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in fler personer", chooseGroup: "Välj grupp", createGroup: "+ Skapa ny grupp",
-    newGroupTitle: "Skapa ny grupp", groupName: "Gruppnamn", profileName: "Profilnamn", saveGroup: "Spara",
+    newGroupTitle: "Skapa ny grupp", groupName: "Gruppnamn", groupNameOptional: "Gruppnamn (valfritt)", groupSize: "Gruppstorlek", pairSize: "Par (2 pers)", multiSize: "Grupp (3–10 pers)", profileName: "Profilnamn", saveGroup: "Spara",
+    pairParticipants: "Vem delar du med?", groupParticipants: "Lägg till deltagare", pairParticipantsHelp: "Personen väljer sitt namn när hen ansluter.", groupParticipantsHelp: "De väljer sitt namn när de ansluter.", partnerName: "Namn", participantName: "Person {number}", addParticipant: "+ Lägg till person",
+    participants: "Deltagare", yourProfile: "Din profil", editProfile: "Ändra", done: "Klar", createGroupAction: "Skapa grupp", requiredGroupName: "Skriv ett namn på gruppen.", requiredParticipantNames: "Fyll i namn på alla deltagare.", requiredProfileName: "Fyll i ditt profilnamn.",
+    whoAreYou: "Vem är du?", chooseYourProfile: "Välj din profil för att ansluta till gruppen.", waitingToJoin: "Väntar", uniqueParticipantNames: "Alla deltagare behöver ha unika namn.",
     groupCreated: "Gruppen är skapad. Bjud in fler med länken:", continueToGroup: "Fortsätt till gruppen",
     showAll: "Visa alla", hideAll: "Dölj alla",
+    groupSection: "Grupp", profileSection: "Profil", owner: "Ägare", copyInviteLink: "Kopiera inbjudningslänk",
+    deleteGroup: "Ta bort grupp", deleteGroupConfirm: "Ta bort gruppen ”{name}” och all data i den? Detta går inte att ångra.",
     groupMemberSingular: "medlem", groupMemberPlural: "medlemmar", groupPickerEmpty: "Du har inga grupper ännu. Skapa en ny eller anslut med en inbjudningslänk.",
     inviteHelp: "Samma länk kan användas tills gruppen har tio medlemmar.",
     copyLink: "Kopiera länk", copied: "Kopierad!", share: "Dela", gotInvite: "Har du fått en inbjudan?",
@@ -51,6 +56,10 @@ const TRANSLATIONS = {
     searchHistory: "Sök", noSearchResults: "Inga utgifter matchar sökningen.",
     language: "Språk", theme: "Tema", profileColor: "Avatarfärg", avatar: "Avatar", customizeAvatar: "Anpassa avatar", chooseAvatar: "Välj en avatar", choose: "Välj", cancel: "Avbryt", initial: "Initial", emoji: "Emoji", optionalEmoji: "Valfri emoji", chooseEmoji: "Välj emoji", customEmoji: "Annan emoji…", systemTheme: "Auto", lightTheme: "Ljust", darkTheme: "Mörkt", saveChanges: "Spara ändringar", you: "Du", youObject: "dig", payerYou: "Dig", receivedBy: "Mottaget av",
     paidBy: "Betalat av", addIncome: "Lägg till inkomst", addExpense: "Lägg till utgift",
+    splitEqually: "Dela lika", personSingular: "person", personPlural: "personer",
+    equalSharePreview: "Beloppet delas lika mellan {count} {people}.", selectParticipant: "Välj minst en person som ska vara med på utgiften.",
+    balanceSettled: "Ditt saldo är jämnt.", anotherMember: "en annan medlem", suggestedSettlements: "Du har {count} föreslagna Swishar.", swishAction: "Swisha",
+    demoMissingSwish: "Demoprofilen saknar Swishnummer.",
     editIncome: "Redigera inkomst", editExpense: "Redigera utgift", save: "Spara ändringar",
     allEven: "Allt är jämnt. Ingen är skyldig något.", oweSelf: "är skyldig", owesOther: "är skyldig", total: "Totalt",
     noEntries: "Inga utgifter än. Lägg till er första ovan.", noEntriesFor: "Inga utgifter för {name}.",
@@ -82,14 +91,26 @@ const TRANSLATIONS = {
     receiptItemAboveScanned: "{amount} mer än avläst kvittototal",
     receiptItemExact: "Samma som avläst kvittototal",
     removeReceiptItems: "Ta bort kvittodelningen",
+    recurringMonthly: "Återkommande varje månad", recurringMonthlyHelp: "Skapas automatiskt samma dag varje månad.",
+    recurringPayments: "Stående betalningar", noRecurringPayments: "Inga stående betalningar.", recurringDay: "dag {day} varje månad",
+    stopRecurring: "Avsluta", stopRecurringConfirm: "Avsluta den stående betalningen? Redan skapade utgifter behålls.",
+    missingGroupProfiles: "Gruppen saknar den profilinformation som krävs för att öppnas.", inviteNotFound: "Inbjudningskoden finns inte.",
+    pairFull: "Den här gruppen har redan två personer.", groupAtCapacity: "Den här gruppen har redan tio personer.",
+    profileAlreadyClaimed: "Den profilen har redan valts av någon annan. Öppna inbjudningslänken igen och välj en annan.", noGroupSpot: "Det finns ingen ledig plats i gruppen.",
+    missingAccountProfile: "Kontot är skapat, men profilen saknas. Publicera Firestore-reglerna och slutför sedan kontot här.",
   },
   en: {
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
     email: "Email", password: "Password, at least 6 characters", login: "Log in", loggingIn: "Logging in…", createAccount: "Create an account", creating: "Creating account…",
     forgotPassword: "Forgot password?", inviteOther: "Invite more people", chooseGroup: "Choose group", createGroup: "+ Create new group",
-    newGroupTitle: "Create new group", groupName: "Group name", profileName: "Profile name", saveGroup: "Save",
+    newGroupTitle: "Create new group", groupName: "Group name", groupNameOptional: "Group name (optional)", groupSize: "Group size", pairSize: "Couple (2 people)", multiSize: "Group (3–10 people)", profileName: "Profile name", saveGroup: "Save",
+    pairParticipants: "Who are you sharing with?", groupParticipants: "Add participants", pairParticipantsHelp: "They choose their name when joining.", groupParticipantsHelp: "They choose their name when joining.", partnerName: "Name", participantName: "Person {number}", addParticipant: "+ Add person",
+    participants: "Participants", yourProfile: "Your profile", editProfile: "Edit", done: "Done", createGroupAction: "Create group", requiredGroupName: "Enter a name for the group.", requiredParticipantNames: "Enter a name for every participant.", requiredProfileName: "Enter your profile name.",
+    whoAreYou: "Who are you?", chooseYourProfile: "Choose your profile to join the group.", waitingToJoin: "Pending", uniqueParticipantNames: "Each participant needs a unique name.",
     groupCreated: "Your group is ready. Invite others with this link:", continueToGroup: "Continue to group",
     showAll: "Show all", hideAll: "Hide all",
+    groupSection: "Group", profileSection: "Profile", owner: "Owner", copyInviteLink: "Copy invitation link",
+    deleteGroup: "Delete group", deleteGroupConfirm: "Delete “{name}” and all its data? This cannot be undone.",
     groupMemberSingular: "member", groupMemberPlural: "members", groupPickerEmpty: "You do not have any groups yet. Create a new one or join with an invitation link.",
     inviteHelp: "The same link can be used until the group has ten members.",
     copyLink: "Copy link", copied: "Copied!", share: "Share", gotInvite: "Have you received an invitation?",
@@ -100,6 +121,10 @@ const TRANSLATIONS = {
     searchHistory: "Search", noSearchResults: "No expenses match your search.",
     language: "Language", theme: "Theme", profileColor: "Avatar color", avatar: "Avatar", customizeAvatar: "Customize avatar", chooseAvatar: "Choose an avatar", choose: "Choose", cancel: "Cancel", initial: "Initial", emoji: "Emoji", optionalEmoji: "Optional emoji", chooseEmoji: "Choose emoji", customEmoji: "Other emoji…", systemTheme: "Auto", lightTheme: "Light", darkTheme: "Dark", saveChanges: "Save changes", you: "You", youObject: "you", payerYou: "You", receivedBy: "Received by",
     paidBy: "Paid by", addIncome: "Add income", addExpense: "Add expense",
+    splitEqually: "Split equally", personSingular: "person", personPlural: "people",
+    equalSharePreview: "The amount is split equally between {count} {people}.", selectParticipant: "Choose at least one person to include in the expense.",
+    balanceSettled: "Your balance is settled.", anotherMember: "another member", suggestedSettlements: "You have {count} suggested settlements.", swishAction: "Swish",
+    demoMissingSwish: "This demo profile has no Swish number.",
     editIncome: "Edit income", editExpense: "Edit expense", save: "Save changes",
     allEven: "Everything is settled. No one owes anything.", oweSelf: "owe", owesOther: "owes", total: "Total",
     noEntries: "No expenses yet. Add your first one above.", noEntriesFor: "No expenses for {name}.",
@@ -131,6 +156,13 @@ const TRANSLATIONS = {
     receiptItemAboveScanned: "{amount} above scanned receipt total",
     receiptItemExact: "Same as scanned receipt total",
     removeReceiptItems: "Remove receipt split",
+    recurringMonthly: "Recurring every month", recurringMonthlyHelp: "Created automatically on the same day each month.",
+    recurringPayments: "Recurring payments", noRecurringPayments: "No recurring payments.", recurringDay: "day {day} every month",
+    stopRecurring: "Stop", stopRecurringConfirm: "Stop this recurring payment? Expenses already created will be kept.",
+    missingGroupProfiles: "The group does not have the profile information required to open it.", inviteNotFound: "The invitation code does not exist.",
+    pairFull: "This couple already has two people.", groupAtCapacity: "This group already has ten people.",
+    profileAlreadyClaimed: "Someone else has already chosen that profile. Open the invitation link again and choose another one.", noGroupSpot: "There are no available spots in the group.",
+    missingAccountProfile: "The account was created, but its profile is missing. Publish the Firestore rules, then complete the account here.",
   },
 };
 const requestedLanguage = new URL(window.location.href).searchParams.get("lang");
@@ -161,6 +193,7 @@ let SETTINGS_AVATAR_EMOJI = "";
 let AVATAR_MODAL_ORIGINAL = null;
 let AVATAR_TARGET = "settings";
 let CREATED_BANKBOOK = null;
+let CLAIM_MEMBER_RESOLVE = null;
 
 function validProfileColor(color) {
   return PROFILE_COLORS.includes(String(color || "").toLowerCase());
@@ -274,12 +307,14 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n-alt]").forEach((element) => { element.alt = t(element.dataset.i18nAlt); });
   document.querySelectorAll("#settings-language button").forEach((button) =>
     button.classList.toggle("active", button.dataset.language === LANGUAGE));
+  updateCreateGroupCopy();
   applyTheme();
   updateAuthLabels();
   if (APP_INITIALIZED) {
     updatePersonLabels();
     onEntryTypeChange(getEntryType());
     render();
+    if (activeBankbook && !document.getElementById("settings-modal").hidden) renderGroupMembers(activeBankbook);
   }
 }
 
@@ -376,6 +411,19 @@ function groupExperienceType(bankbook = activeBankbook) {
   return "pair";
 }
 
+function currentMemberId(bankbook = activeBankbook) {
+  if (!signedInUser || !bankbook?.members) return signedInUser?.uid || "";
+  if (bankbook.members[signedInUser.uid]) return signedInUser.uid;
+  return Object.entries(bankbook.members).find(([, profile]) => profile.claimedBy === signedInUser.uid)?.[0]
+    || signedInUser.uid;
+}
+
+function pendingGroupProfiles(bankbook) {
+  return Object.entries(bankbook?.members || {})
+    .filter(([, profile]) => profile.pending === true && !profile.claimedBy)
+    .sort(([, left], [, right]) => MEMBER_SLOTS.indexOf(left.slot) - MEMBER_SLOTS.indexOf(right.slot));
+}
+
 function isPairExperience(bankbook = activeBankbook) {
   return groupExperienceType(bankbook) === "pair";
 }
@@ -397,7 +445,8 @@ function applyExperienceMode(bankbook = activeBankbook) {
 function groupBalancesForCurrent(entries) {
   const profiles = activeGroupProfiles();
   const profileUids = profiles.map(([uid]) => uid);
-  const balances = new Map(profileUids.filter((uid) => uid !== signedInUser.uid).map((uid) => [uid, 0]));
+  const ownMemberId = currentMemberId();
+  const balances = new Map(profileUids.filter((uid) => uid !== ownMemberId).map((uid) => [uid, 0]));
 
   for (const entry of entries) {
     const payerUid = entryPayerUid(entry, profiles);
@@ -405,21 +454,21 @@ function groupBalancesForCurrent(entries) {
 
     if (entry.type === "settlement" && entry.payerUid && entry.recipientUid) {
       const amount = Number(entry.amount) || 0;
-      if (entry.payerUid === signedInUser.uid) balances.set(entry.recipientUid, (balances.get(entry.recipientUid) || 0) + amount);
-      if (entry.recipientUid === signedInUser.uid) balances.set(entry.payerUid, (balances.get(entry.payerUid) || 0) - amount);
+      if (entry.payerUid === ownMemberId) balances.set(entry.recipientUid, (balances.get(entry.recipientUid) || 0) + amount);
+      if (entry.recipientUid === ownMemberId) balances.set(entry.payerUid, (balances.get(entry.payerUid) || 0) - amount);
       continue;
     }
 
     const participants = entry.participantUids?.length ? entry.participantUids : profileUids;
-    if (!participants.length || !participants.includes(signedInUser.uid)) continue;
+    if (!participants.length || !participants.includes(ownMemberId)) continue;
     const sharedAmount = entry.type === "expense"
       ? Math.max(0, Number(entry.amount) - (Number(entry.excludedAmount) || 0))
       : Number(entry.amount) || 0;
     const share = sharedAmount / participants.length;
     const direction = entry.type === "income" ? -1 : 1;
 
-    if (payerUid === signedInUser.uid) {
-      participants.filter((uid) => uid !== signedInUser.uid).forEach((uid) => {
+    if (payerUid === ownMemberId) {
+      participants.filter((uid) => uid !== ownMemberId).forEach((uid) => {
         balances.set(uid, (balances.get(uid) || 0) + share * direction);
       });
     } else {
@@ -569,8 +618,8 @@ function otherPersonKey(personKey = CURRENT_USER) {
 function splitLabel(entry) {
   if (entry.participantUids?.length) {
     const count = entry.participantUids.length;
-    const label = LANGUAGE === "en" ? "Split equally" : "Dela lika";
-    const peopleLabel = LANGUAGE === "en" ? (count === 1 ? "person" : "people") : (count === 1 ? "person" : "personer");
+    const label = t("splitEqually");
+    const peopleLabel = t(count === 1 ? "personSingular" : "personPlural");
     return `${label} · ${count} ${peopleLabel}`;
   }
   const leftKey = CURRENT_USER;
@@ -598,7 +647,7 @@ function renderRecurringSettings() {
     const item = document.createElement("div");
     item.className = "recurring-settings-item";
     const day = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
-    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${day}:e varje månad</small></span><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">Avsluta</button>`;
+    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${escapeHtml(t("recurringDay", { day }))}</small></span><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">${escapeHtml(t("stopRecurring"))}</button>`;
     list.appendChild(item);
   });
 }
@@ -767,7 +816,7 @@ function renderBalance() {
   if (CURRENT_USER !== debtorKey) return;
 
   btn.hidden = false;
-  btn.querySelector("span").textContent = `${LANGUAGE === "en" ? "Swish" : "Swisha"} ${objectName(creditorKey)} ${kr(owed)}`;
+  btn.querySelector("span").textContent = `${t("swishAction")} ${objectName(creditorKey)} ${kr(owed)}`;
   btn.dataset.payee = creditor.swish;
   btn.dataset.amount = owed.toFixed(2);
 }
@@ -778,8 +827,9 @@ function renderGroupBalance() {
   const btn = document.getElementById("settle-btn");
   const panel = document.getElementById("settle-panel");
   const profiles = activeGroupProfiles();
+  const ownMemberId = currentMemberId();
   const plan = optimizedSwishPlan(ENTRIES);
-  const ownTransactions = plan.filter((transaction) => transaction.fromUid === signedInUser.uid || transaction.toUid === signedInUser.uid);
+  const ownTransactions = plan.filter((transaction) => transaction.fromUid === ownMemberId || transaction.toUid === ownMemberId);
   const showAllButton = document.getElementById("balance-show-all");
   const suggestions = document.getElementById("swish-suggestions");
 
@@ -791,8 +841,8 @@ function renderGroupBalance() {
     if (SHOW_ALL_GROUP_DEBTS && plan.length) {
       btn.hidden = true;
       const expandedPlan = [
-        ...plan.filter((transaction) => transaction.fromUid !== signedInUser.uid),
-        ...plan.filter((transaction) => transaction.fromUid === signedInUser.uid),
+        ...plan.filter((transaction) => transaction.fromUid !== ownMemberId),
+        ...plan.filter((transaction) => transaction.fromUid === ownMemberId),
       ];
       renderSwishSuggestions(profiles, expandedPlan);
       return;
@@ -811,34 +861,34 @@ function renderGroupBalance() {
   document.getElementById("swish-suggestions").hidden = true;
   if (!ownTransactions.length) {
     heading.textContent = kr(0);
-    sub.textContent = LANGUAGE === "en" ? "Your balance is settled." : "Ditt saldo är jämnt.";
+    sub.textContent = t("balanceSettled");
     renderRoutes();
     return;
   }
 
   if (ownTransactions.length > 1) {
-    const net = ownTransactions.reduce((sum, transaction) => sum + (transaction.toUid === signedInUser.uid ? transaction.amount : -transaction.amount), 0);
-    const outgoingTransactions = ownTransactions.filter((transaction) => transaction.fromUid === signedInUser.uid);
+    const net = ownTransactions.reduce((sum, transaction) => sum + (transaction.toUid === ownMemberId ? transaction.amount : -transaction.amount), 0);
+    const outgoingTransactions = ownTransactions.filter((transaction) => transaction.fromUid === ownMemberId);
     heading.textContent = kr(net);
     if (outgoingTransactions.length === ownTransactions.length) {
       const recipientNames = outgoingTransactions.map((transaction) => (
         profiles.find(([profileUid]) => profileUid === transaction.toUid)?.[1]?.name
-        || (LANGUAGE === "en" ? "another member" : "en annan medlem")
+        || t("anotherMember")
       ));
       const recipients = new Intl.ListFormat(locale(), { style: "long", type: "conjunction" }).format(recipientNames);
       sub.innerHTML = `<strong>${escapeHtml(t("you"))}</strong> ${t("oweSelf")} ${escapeHtml(recipients)}`;
     } else {
-      sub.textContent = LANGUAGE === "en" ? `You have ${ownTransactions.length} suggested settlements.` : `Du har ${ownTransactions.length} föreslagna Swishar.`;
+      sub.textContent = t("suggestedSettlements", { count: ownTransactions.length });
     }
     renderRoutes(ownTransactions);
     return;
   }
 
   const [transaction] = ownTransactions;
-  const currentUserOwes = transaction.fromUid === signedInUser.uid;
+  const currentUserOwes = transaction.fromUid === ownMemberId;
   const otherUid = currentUserOwes ? transaction.toUid : transaction.fromUid;
   const profile = profiles.find(([profileUid]) => profileUid === otherUid)?.[1];
-  const name = profile?.name || (LANGUAGE === "en" ? "another member" : "en annan medlem");
+  const name = profile?.name || t("anotherMember");
   heading.textContent = kr(currentUserOwes ? -transaction.amount : transaction.amount);
   sub.innerHTML = currentUserOwes
     ? `<strong>${escapeHtml(t("you"))}</strong> ${t("oweSelf")} ${escapeHtml(name)}`
@@ -849,7 +899,7 @@ function renderGroupBalance() {
     return;
   }
   btn.hidden = false;
-  btn.querySelector("span").textContent = `${LANGUAGE === "en" ? "Swish" : "Swisha"} ${name} ${kr(transaction.amount)}`;
+  btn.querySelector("span").textContent = `${t("swishAction")} ${name} ${kr(transaction.amount)}`;
   btn.dataset.payee = profile?.swish || "";
   btn.dataset.amount = transaction.amount.toFixed(2);
   btn.dataset.payeeUid = otherUid;
@@ -865,19 +915,20 @@ function renderSwishSuggestions(profiles = activeGroupProfiles(), suggestedPlan 
     return;
   }
 
-  const nameFor = (uid) => uid === signedInUser.uid
+  const ownMemberId = currentMemberId();
+  const nameFor = (uid) => uid === ownMemberId
     ? t("you")
     : (profiles.find(([profileUid]) => profileUid === uid)?.[1]?.name || "–");
   container.innerHTML = `
     <div class="swish-suggestion-list">
       ${plan.map((transaction) => {
         const recipient = profiles.find(([uid]) => uid === transaction.toUid)?.[1];
-        const clickable = transaction.fromUid === signedInUser.uid;
+        const clickable = transaction.fromUid === ownMemberId;
         if (clickable) {
           const recipientName = nameFor(transaction.toUid);
           return `
           <button class="swish-suggestion swish-suggestion-action" type="button" data-payee="${escapeHtml(recipient?.swish || "")}" data-payee-uid="${escapeHtml(transaction.toUid)}" data-amount="${transaction.amount.toFixed(2)}">
-            <span>${LANGUAGE === "en" ? "Swish" : "Swisha"} ${escapeHtml(recipientName)} ${kr(transaction.amount)}</span>
+            <span>${escapeHtml(t("swishAction"))} ${escapeHtml(recipientName)} ${kr(transaction.amount)}</span>
             <img class="swish-logo-img" src="swish-logo-secondary-dark-bg.svg" alt="Swish" />
           </button>`;
         }
@@ -915,7 +966,7 @@ function renderHistory() {
     }));
     const allAmount = memberTotals.reduce((sum, member) => sum + member.amount, 0);
     totals.innerHTML = `${memberTotals.map(({ uid, profile, amount, color }) => `
-      <button type="button" data-filter="${escapeHtml(uid)}" class="${HISTORY_FILTER === uid ? "active" : ""}" aria-pressed="${HISTORY_FILTER === uid}"><span class="total-label"><i class="profile-dot" style="--profile-color:${color}"></i>${escapeHtml(uid === signedInUser.uid ? t("you") : profile.name)}</span><b>${kr0(amount)}</b></button>`).join("")}
+      <button type="button" data-filter="${escapeHtml(uid)}" class="${HISTORY_FILTER === uid ? "active" : ""}" aria-pressed="${HISTORY_FILTER === uid}"><span class="total-label"><i class="profile-dot" style="--profile-color:${color}"></i>${escapeHtml(uid === currentMemberId() ? t("you") : profile.name)}</span><b>${kr0(amount)}</b></button>`).join("")}
       <button type="button" data-filter="all">${t("total")}<b>${kr0(allAmount)}</b></button>`;
   }
 
@@ -978,7 +1029,7 @@ function renderHistory() {
       const recipientUid = e.recipientUid || profileUidForSlot(e.payer === "A" ? "B" : "A", profiles);
       const payerName = profiles.find(([uid]) => uid === payerUid)?.[1]?.name || PEOPLE[e.payer]?.name || subjectName(e.payer);
       const recipientName = profiles.find(([uid]) => uid === recipientUid)?.[1]?.name || PEOPLE[e.payer === "A" ? "B" : "A"]?.name || "";
-      const amountSign = payerUid === signedInUser.uid ? "−" : recipientUid === signedInUser.uid ? "+" : "";
+      const amountSign = payerUid === currentMemberId() ? "−" : recipientUid === currentMemberId() ? "+" : "";
       li.className = "h-settle";
       li.innerHTML = `
         <div class="h-ico"><img class="swish-history-mark" src="swish-mark.svg" alt="" /></div>
@@ -1052,7 +1103,7 @@ function onSettleClick() {
   if (btn.hidden) return;
   const { payee, amount } = btn.dataset;
   if (!payee) {
-    window.alert(LANGUAGE === "en" ? "This demo profile has no Swish number." : "Demoprofilen saknar Swishnummer.");
+    window.alert(t("demoMissingSwish"));
     return;
   }
   if (usesGroupExperience()) {
@@ -1067,15 +1118,15 @@ function onSettleClick() {
 async function confirmSettlement() {
   if (usesGroupExperience()) {
     const transaction = PENDING_GROUP_SETTLEMENT
-      ? { fromUid: signedInUser.uid, toUid: PENDING_GROUP_SETTLEMENT.toUid, amount: PENDING_GROUP_SETTLEMENT.amount }
-      : optimizedSwishPlan(ENTRIES).find((item) => item.fromUid === signedInUser.uid);
+      ? { fromUid: currentMemberId(), toUid: PENDING_GROUP_SETTLEMENT.toUid, amount: PENDING_GROUP_SETTLEMENT.amount }
+      : optimizedSwishPlan(ENTRIES).find((item) => item.fromUid === currentMemberId());
     if (!transaction) return;
     const recipientUid = transaction.toUid;
-    const payerProfile = activeGroupProfiles().find(([uid]) => uid === signedInUser.uid)?.[1];
+    const payerProfile = activeGroupProfiles().find(([uid]) => uid === currentMemberId())?.[1];
     await store.add({
       type: "settlement",
       payer: payerProfile?.slot || CURRENT_USER,
-      payerUid: signedInUser.uid,
+      payerUid: currentMemberId(),
       recipientUid,
       amount: transaction.amount,
       ts: Date.now(),
@@ -1202,6 +1253,7 @@ function setMultiSplitMode(mode) {
 
 function renderMultiExpenseControls(entry = null) {
   const profiles = displayGroupProfiles();
+  const ownMemberId = currentMemberId();
   MULTI_EXPENSE_MODE = usesGroupExperience();
   document.getElementById("e-payer").hidden = MULTI_EXPENSE_MODE;
   document.getElementById("e-payer-multi-wrap").hidden = !MULTI_EXPENSE_MODE;
@@ -1211,13 +1263,13 @@ function renderMultiExpenseControls(entry = null) {
   if (!MULTI_EXPENSE_MODE) return;
 
   const payerSelect = document.getElementById("e-payer-multi");
-  payerSelect.innerHTML = profiles.map(([uid, profile]) => `<option value="${escapeHtml(uid)}">${escapeHtml(uid === signedInUser.uid ? t("you") : profile.name)}</option>`).join("");
-  payerSelect.value = entry?.payerUid && profiles.some(([uid]) => uid === entry.payerUid) ? entry.payerUid : signedInUser.uid;
-  document.getElementById("e-payer-multi-value").textContent = profiles.find(([uid]) => uid === payerSelect.value)?.[0] === signedInUser.uid
-    ? t("you")
+  payerSelect.innerHTML = profiles.map(([uid, profile]) => `<option value="${escapeHtml(uid)}">${escapeHtml(uid === ownMemberId ? t("payerYou") : profile.name)}</option>`).join("");
+  payerSelect.value = entry?.payerUid && profiles.some(([uid]) => uid === entry.payerUid) ? entry.payerUid : ownMemberId;
+  document.getElementById("e-payer-multi-value").textContent = profiles.find(([uid]) => uid === payerSelect.value)?.[0] === ownMemberId
+    ? t("payerYou")
     : profiles.find(([uid]) => uid === payerSelect.value)?.[1]?.name || "";
   document.getElementById("e-payer-multi-menu").innerHTML = profiles.map(([uid, profile], index) => {
-    const name = uid === signedInUser.uid ? t("you") : profile.name;
+    const name = uid === ownMemberId ? t("payerYou") : profile.name;
     const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
     const avatar = profileAvatar(profile, profile.name) || "?";
     const emojiClass = profile.avatarMode === "emoji" ? " avatar-emoji" : "";
@@ -1226,7 +1278,7 @@ function renderMultiExpenseControls(entry = null) {
 
   const savedParticipants = new Set(entry?.participantUids?.length ? entry.participantUids : profiles.map(([uid]) => uid));
   document.getElementById("multi-participants").innerHTML = profiles.map(([uid, profile], index) => {
-    const name = uid === signedInUser.uid ? t("you") : profile.name;
+    const name = uid === ownMemberId ? t("you") : profile.name;
     const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
     return `<label class="multi-participant" style="--profile-color:${color}"><input type="checkbox" value="${escapeHtml(uid)}" ${savedParticipants.has(uid) ? "checked" : ""}><span>${escapeHtml(name)}</span></label>`;
   }).join("");
@@ -2031,8 +2083,8 @@ function updatePreview() {
     const participants = MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().length : selectedMultiParticipants().length;
     el.hidden = false;
     el.textContent = participants > 0
-      ? `Beloppet delas lika mellan ${participants} ${participants === 1 ? "person" : "personer"}.`
-      : "Välj minst en person som ska vara med på utgiften.";
+      ? t("equalSharePreview", { count: participants, people: t(participants === 1 ? "personSingular" : "personPlural") })
+      : t("selectParticipant");
     return;
   }
   if (type === "income") {
@@ -2315,7 +2367,7 @@ function initApp() {
       ? (MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().map(([uid]) => uid) : selectedMultiParticipants())
       : [];
     if (MULTI_EXPENSE_MODE && participantUids.length === 0) {
-      showReceiptError("Välj minst en person som ska vara med på utgiften.");
+      showReceiptError(t("selectParticipant"));
       return;
     }
     const payerUid = MULTI_EXPENSE_MODE ? document.getElementById("e-payer-multi").value : "";
@@ -2442,7 +2494,7 @@ document.getElementById("swish-suggestions").addEventListener("click", (event) =
   if (!button) return;
   const { payee, payeeUid, amount } = button.dataset;
   if (!payee) {
-    window.alert(LANGUAGE === "en" ? "This demo profile has no Swish number." : "Demoprofilen saknar Swishnummer.");
+    window.alert(t("demoMissingSwish"));
     return;
   }
   PENDING_GROUP_SETTLEMENT = { toUid: payeeUid, amount: Number(amount) };
@@ -2526,22 +2578,22 @@ function invitationUrl(bankbookId) {
 function renderGroupMembers(bankbook) {
   const profiles = activeGroupProfiles(bankbook);
   const realProfiles = profiles.filter(([, profile]) => !profile.demo);
-  const count = profiles.length;
+  const ownMemberId = currentMemberId(bankbook);
   const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
-  document.getElementById("group-member-count").textContent = t("groupMemberCount", { count, max: maxMembers });
   document.getElementById("group-member-list").innerHTML = profiles.map(([uid, profile], index) => {
     const name = profile.name || `Person ${index + 1}`;
     const avatar = profileAvatar(profile, name) || name.charAt(0).toUpperCase();
     const emojiClass = profile.avatarMode === "emoji" ? " avatar-emoji" : "";
     const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[index % PROFILE_COLORS.length];
-    const selfLabel = uid === signedInUser.uid ? ` (${t("you")})` : "";
+    const selfLabel = uid === ownMemberId ? ` (${t("you")})` : "";
     const demoLabel = profile.demo ? `<em>${t("demoMember")}</em>` : "";
-    const ownerLabel = uid === bankbook.createdBy ? `<em class="group-owner">${LANGUAGE === "en" ? "Owner" : "Ägare"}</em>` : "";
-    return `<div class="group-member${profile.demo ? " is-demo" : ""}"><i class="group-member-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(name)}${escapeHtml(selfLabel)}${ownerLabel}${demoLabel}</span></div>`;
+    const pendingLabel = profile.pending && !profile.claimedBy ? `<em class="group-pending">${t("waitingToJoin")}</em>` : "";
+    const ownerLabel = uid === bankbook.createdBy ? `<em class="group-owner">${escapeHtml(t("owner"))}</em>` : "";
+    return `<div class="group-member${profile.demo ? " is-demo" : ""}${profile.pending && !profile.claimedBy ? " is-pending" : ""}"><i class="group-member-avatar${emojiClass}" style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(name)}${escapeHtml(selfLabel)}${ownerLabel}${demoLabel}${pendingLabel}</span></div>`;
   }).join("");
-  const full = realProfiles.length >= maxMembers;
+  const openProfiles = pendingGroupProfiles(bankbook).length;
+  const full = openProfiles === 0 && realProfiles.length >= maxMembers;
   document.getElementById("invite-panel").hidden = full;
-  document.getElementById("group-status").textContent = full ? t("groupFull") : t("groupReadyHelp");
 }
 
 function activeGroupProfiles(bankbook = activeBankbook) {
@@ -2553,7 +2605,7 @@ function activeGroupProfiles(bankbook = activeBankbook) {
 
 function displayGroupProfiles(bankbook = activeBankbook) {
   const profiles = activeGroupProfiles(bankbook);
-  const ownIndex = profiles.findIndex(([uid]) => uid === signedInUser?.uid);
+  const ownIndex = profiles.findIndex(([uid]) => uid === currentMemberId(bankbook));
   if (ownIndex <= 0) return profiles;
   return [profiles[ownIndex], ...profiles.slice(0, ownIndex), ...profiles.slice(ownIndex + 1)];
 }
@@ -2567,8 +2619,7 @@ function canRenameActiveGroup(bankbook = activeBankbook) {
 }
 
 function canDeleteActiveGroup(bankbook = activeBankbook) {
-  return canRenameActiveGroup(bankbook)
-    && (bankbook?.multiGroup === true || isMockTestGroup(bankbook));
+  return canRenameActiveGroup(bankbook);
 }
 
 function bankbookDisplayName(bankbook) {
@@ -2615,8 +2666,21 @@ async function refreshBankbookMenu(autoOpen = true) {
   renderBankbookMenu(bankbooks);
 }
 
-async function createAutomaticBankbook({ groupName, profileName, color, avatarMode, avatarEmoji, groupType }) {
+async function createAutomaticBankbook({ groupName, profileName, color, avatarMode, avatarEmoji, groupType, participantNames = [] }) {
   const reference = fs.doc(fs.collection(db, "bankbooks"));
+  const pendingMembers = Object.fromEntries(participantNames.map((name, index) => {
+    const slot = MEMBER_SLOTS[index + 1];
+    return [`pending-${crypto.randomUUID()}`, {
+      name,
+      swish: "",
+      color: PROFILE_COLORS[(index + 1) % PROFILE_COLORS.length],
+      avatarMode: "letter",
+      avatarEmoji: "",
+      slot,
+      pending: true,
+      claimedBy: null,
+    }];
+  }));
   const bankbook = {
     name: groupName,
     groupType,
@@ -2633,6 +2697,7 @@ async function createAutomaticBankbook({ groupName, profileName, color, avatarMo
         avatarEmoji,
         slot: "A",
       },
+      ...pendingMembers,
     },
     createdAt: fs.serverTimestamp(),
   };
@@ -2649,7 +2714,7 @@ function peopleFromBankbook(bankbook) {
   const personA = profiles.find(([, profile]) => profile.slot === "A");
   const personB = profiles.find(([, profile]) => profile.slot === "B");
   if (!personA || !personB) return null;
-  const signedInProfile = profiles.find(([uid]) => uid === signedInUser.uid);
+  const signedInProfile = profiles.find(([uid]) => uid === currentMemberId(bankbook));
   return {
     people: {
       A: {
@@ -2673,7 +2738,7 @@ async function openBankbook(bankbook) {
   const people = peopleFromBankbook(bankbook);
   if (!people) {
     renderBankbookMenu(await loadBankbooks());
-    showError("bankbook-error", new Error("Gruppen saknar den profilinformation som krävs för att öppnas."));
+    showError("bankbook-error", new Error(t("missingGroupProfiles")));
     return;
   }
   if (unsubscribeWaitingRoom) {
@@ -2840,30 +2905,75 @@ document.getElementById("auth-submit").addEventListener("click", (event) => {
   submitAuthForm();
 });
 
+function closeClaimMember(memberId = null) {
+  document.getElementById("claim-member-modal").hidden = true;
+  const resolve = CLAIM_MEMBER_RESOLVE;
+  CLAIM_MEMBER_RESOLVE = null;
+  if (resolve) resolve(memberId);
+}
+
+function choosePendingProfile(bankbook) {
+  const profiles = pendingGroupProfiles(bankbook);
+  if (!profiles.length) return Promise.resolve(null);
+  const list = document.getElementById("claim-member-list");
+  list.innerHTML = profiles.map(([uid, profile], index) => {
+    const color = validProfileColor(profile.color) ? profile.color : PROFILE_COLORS[(index + 1) % PROFILE_COLORS.length];
+    const avatar = profileAvatar(profile, profile.name) || "?";
+    return `<button class="claim-member-option" type="button" data-claim-member="${escapeHtml(uid)}"><i style="--profile-color:${color}">${escapeHtml(avatar)}</i><span>${escapeHtml(profile.name)}</span></button>`;
+  }).join("");
+  document.getElementById("claim-member-modal").hidden = false;
+  return new Promise((resolve) => { CLAIM_MEMBER_RESOLVE = resolve; });
+}
+
+document.getElementById("claim-member-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-claim-member]");
+  if (button) closeClaimMember(button.dataset.claimMember);
+});
+document.getElementById("claim-member-close").addEventListener("click", () => closeClaimMember());
+document.getElementById("claim-member-modal").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeClaimMember();
+});
+
 async function joinBankbook(code) {
   const reference = fs.doc(db, "bankbooks", code);
   try {
+    const initialSnapshot = await fs.getDoc(reference);
+    if (!initialSnapshot.exists()) throw new Error(t("inviteNotFound"));
+    const initialBankbook = initialSnapshot.data();
+    const pendingProfiles = pendingGroupProfiles(initialBankbook);
+    const claimedMemberId = initialBankbook.memberIds.includes(signedInUser.uid)
+      ? currentMemberId({ id: initialSnapshot.id, ...initialBankbook })
+      : await choosePendingProfile(initialBankbook);
+    if (pendingProfiles.length && !claimedMemberId) return;
     await fs.runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(reference);
-      if (!snapshot.exists()) throw new Error("Inbjudningskoden finns inte.");
+      if (!snapshot.exists()) throw new Error(t("inviteNotFound"));
       const bankbook = snapshot.data();
       if (bankbook.memberIds.includes(signedInUser.uid)) return;
       const maxMembers = groupExperienceType(bankbook) === "pair" ? 2 : MAX_MEMBERS;
-      if (bankbook.memberIds.length >= maxMembers) throw new Error(maxMembers === 2 ? "Den här gruppen har redan två personer." : "Den här gruppen har redan tio personer.");
+      if (bankbook.memberIds.length >= maxMembers) throw new Error(t(maxMembers === 2 ? "pairFull" : "groupAtCapacity"));
+      const reservedProfile = claimedMemberId ? bankbook.members?.[claimedMemberId] : null;
+      if (claimedMemberId && (!reservedProfile || reservedProfile.pending !== true || reservedProfile.claimedBy)) {
+        throw new Error(t("profileAlreadyClaimed"));
+      }
       const usedSlots = new Set(Object.values(bankbook.members || {}).map((member) => member.slot));
-      const slot = MEMBER_SLOTS.find((candidate) => !usedSlots.has(candidate));
-      if (!slot) throw new Error("Det finns ingen ledig plats i gruppen.");
+      const slot = reservedProfile?.slot || MEMBER_SLOTS.find((candidate) => !usedSlots.has(candidate));
+      if (!slot) throw new Error(t("noGroupSpot"));
+      const memberKey = claimedMemberId || signedInUser.uid;
       transaction.update(reference, {
         memberIds: [...bankbook.memberIds, signedInUser.uid],
         members: {
           ...bankbook.members,
-          [signedInUser.uid]: {
-            name: userProfile.name,
+          [memberKey]: {
+            ...(reservedProfile || {}),
+            name: reservedProfile?.name || userProfile.name,
             swish: userProfile.swish,
-            color: userProfile.color || defaultProfileColor(signedInUser.uid),
-            avatarMode: userProfile.avatarMode || "letter",
-            avatarEmoji: userProfile.avatarEmoji || "",
+            color: reservedProfile?.color || userProfile.color || defaultProfileColor(signedInUser.uid),
+            avatarMode: reservedProfile?.avatarMode || userProfile.avatarMode || "letter",
+            avatarEmoji: reservedProfile?.avatarEmoji || userProfile.avatarEmoji || "",
             slot,
+            pending: false,
+            claimedBy: signedInUser.uid,
           },
         },
       });
@@ -2906,13 +3016,81 @@ function closeCreateGroup() {
   AVATAR_TARGET = "settings";
 }
 
+function createGroupParticipantNames() {
+  return [...document.querySelectorAll("#create-group-participant-list input")]
+    .map((input) => input.value.trim());
+}
+
+function activeCreateGroupType() {
+  return document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
+}
+
+function setCreateGroupFieldError(id, message = "") {
+  const element = document.getElementById(id);
+  element.textContent = message;
+  element.hidden = !message;
+}
+
+function updateCreateGroupCopy() {
+  const isPair = activeCreateGroupType() === "pair";
+  document.getElementById("create-group-name-label").textContent = t(isPair ? "groupNameOptional" : "groupName");
+  document.getElementById("create-group-participants-help").textContent = t(isPair ? "pairParticipantsHelp" : "groupParticipantsHelp");
+  const profileName = document.getElementById("create-group-profile-name").value.trim() || t("you");
+  const partnerName = createGroupParticipantNames()[0] || "…";
+  document.getElementById("create-group-name").placeholder = isPair ? `${profileName} & ${partnerName}` : "";
+}
+
+function updateCreateGroupFormState(showErrors = false) {
+  const groupType = activeCreateGroupType();
+  const groupName = document.getElementById("create-group-name").value.trim();
+  const profileName = document.getElementById("create-group-profile-name").value.trim();
+  const participantNames = createGroupParticipantNames();
+  const participantsComplete = participantNames.length >= (groupType === "pair" ? 1 : 2) && participantNames.every(Boolean);
+  const normalizedNames = [profileName, ...participantNames].filter(Boolean).map((name) => name.toLocaleLowerCase(locale()));
+  const namesAreUnique = new Set(normalizedNames).size === normalizedNames.length;
+  const valid = (groupType === "pair" || Boolean(groupName)) && Boolean(profileName) && participantsComplete && namesAreUnique;
+
+  if (showErrors) {
+    setCreateGroupFieldError("create-group-name-error", groupType === "group" && !groupName ? t("requiredGroupName") : "");
+    setCreateGroupFieldError("create-group-profile-error", !profileName ? t("requiredProfileName") : "");
+    setCreateGroupFieldError("create-group-participants-error", !participantsComplete
+      ? t("requiredParticipantNames")
+      : !namesAreUnique ? t("uniqueParticipantNames") : "");
+  } else {
+    setCreateGroupFieldError("create-group-name-error");
+    setCreateGroupFieldError("create-group-profile-error");
+    setCreateGroupFieldError("create-group-participants-error", participantsComplete && profileName && !namesAreUnique ? t("uniqueParticipantNames") : "");
+  }
+  document.getElementById("create-group-save").disabled = !valid;
+  return valid;
+}
+
+function renderCreateGroupParticipants(groupType, names = []) {
+  const isPair = groupType === "pair";
+  const minimum = isPair ? 1 : 2;
+  const maximum = isPair ? 1 : MAX_MEMBERS - 1;
+  const nextNames = names.slice(0, maximum);
+  while (nextNames.length < minimum) nextNames.push("");
+  const list = document.getElementById("create-group-participant-list");
+  list.innerHTML = nextNames.map((name, index) => `
+    <div class="create-group-participant-row">
+      <input type="text" maxlength="40" autocomplete="off" value="${escapeHtml(name)}" placeholder="${escapeHtml(isPair ? t("partnerName") : t("participantName", { number: index + 2 }))}" aria-label="${escapeHtml(isPair ? t("partnerName") : t("participantName", { number: index + 2 }))}" />
+      <button type="button" data-remove-participant="${index}" aria-label="${escapeHtml(t("delete"))}" ${nextNames.length <= minimum ? "hidden" : ""}>×</button>
+    </div>`).join("");
+  document.getElementById("create-group-add-participant").hidden = isPair || nextNames.length >= maximum;
+  updateCreateGroupCopy();
+  updateCreateGroupFormState();
+}
+
 function openCreateGroup() {
   CREATED_BANKBOOK = null;
   AVATAR_TARGET = "create";
   document.getElementById("create-group-name").value = "";
-  document.getElementById("create-group-profile-name").value = userProfile.name || "";
+  document.getElementById("create-group-profile-name").value = "";
+  document.getElementById("create-group-profile-name").placeholder = t("yourName");
   document.querySelectorAll("#create-group-type [data-group-type]").forEach((button) =>
     button.classList.toggle("active", button.dataset.groupType === "pair"));
+  renderCreateGroupParticipants("pair");
   SETTINGS_COLOR = validProfileColor(userProfile.color) ? userProfile.color : defaultProfileColor(signedInUser.uid);
   SETTINGS_AVATAR_MODE = userProfile.avatarMode === "emoji" ? "emoji" : "letter";
   SETTINGS_AVATAR_EMOJI = firstGrapheme(userProfile.avatarEmoji || "");
@@ -2931,10 +3109,29 @@ document.getElementById("create-group-modal").addEventListener("click", (event) 
   if (event.target === event.currentTarget) closeCreateGroup();
 });
 document.getElementById("create-group-profile-name").addEventListener("input", updateAvatarSettings);
+document.getElementById("create-group-form").addEventListener("input", () => {
+  updateCreateGroupCopy();
+  updateCreateGroupFormState();
+});
 document.getElementById("create-group-type").addEventListener("click", (event) => {
   const button = event.target.closest("[data-group-type]");
   if (!button) return;
+  const names = createGroupParticipantNames();
   document.querySelectorAll("#create-group-type [data-group-type]").forEach((option) => option.classList.toggle("active", option === button));
+  renderCreateGroupParticipants(button.dataset.groupType, names);
+});
+document.getElementById("create-group-add-participant").addEventListener("click", () => {
+  const groupType = document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
+  renderCreateGroupParticipants(groupType, [...createGroupParticipantNames(), ""]);
+  document.querySelector("#create-group-participant-list .create-group-participant-row:last-child input")?.focus();
+});
+document.getElementById("create-group-participant-list").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-remove-participant]");
+  if (!button) return;
+  const groupType = document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
+  const names = createGroupParticipantNames();
+  names.splice(Number(button.dataset.removeParticipant), 1);
+  renderCreateGroupParticipants(groupType, names);
 });
 document.getElementById("create-group-avatar-trigger").addEventListener("click", () => {
   AVATAR_TARGET = "create";
@@ -2949,10 +3146,12 @@ document.getElementById("create-group-avatar-trigger").addEventListener("click",
 });
 document.getElementById("create-group-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const groupName = document.getElementById("create-group-name").value.trim();
   const profileName = document.getElementById("create-group-profile-name").value.trim();
-  const groupType = document.querySelector("#create-group-type [data-group-type].active")?.dataset.groupType || "pair";
-  if (!groupName || !profileName) return;
+  const groupType = activeCreateGroupType();
+  const participantNames = createGroupParticipantNames();
+  if (!updateCreateGroupFormState(true)) return;
+  const enteredGroupName = document.getElementById("create-group-name").value.trim();
+  const groupName = enteredGroupName || `${profileName} & ${participantNames[0]}`;
   const saveButton = document.getElementById("create-group-save");
   saveButton.disabled = true;
   document.getElementById("create-group-error").hidden = true;
@@ -2965,6 +3164,7 @@ document.getElementById("create-group-form").addEventListener("submit", async (e
       avatarMode,
       avatarEmoji: avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "",
       groupType,
+      participantNames,
     });
     activeBankbook = CREATED_BANKBOOK;
     document.getElementById("create-group-invite-link").value = invitationUrl(CREATED_BANKBOOK.id);
@@ -2994,7 +3194,7 @@ document.getElementById("create-group-continue").addEventListener("click", async
 document.getElementById("copy-invite").addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.getElementById("invite-link").value);
   const copyButton = document.getElementById("copy-invite");
-  const originalLabel = "Kopiera inbjudningslänk";
+  const originalLabel = t("copyInviteLink");
   copyButton.setAttribute("aria-label", t("copied"));
   copyButton.title = t("copied");
   window.setTimeout(() => {
@@ -3029,7 +3229,8 @@ function cancelAvatarSelection() {
 
 function openSettings() {
   AVATAR_TARGET = "settings";
-  const groupProfile = activeBankbook.members?.[signedInUser.uid] || userProfile;
+  const ownMemberId = currentMemberId();
+  const groupProfile = activeBankbook.members?.[ownMemberId] || userProfile;
   document.getElementById("settings-name").value = groupProfile.name;
   SETTINGS_COLOR = validProfileColor(groupProfile.color) ? groupProfile.color : defaultProfileColor(signedInUser.uid);
   SETTINGS_AVATAR_MODE = groupProfile.avatarMode === "emoji" ? "emoji" : "letter";
@@ -3055,7 +3256,7 @@ async function deleteCollectionDocuments(collectionReference) {
 document.getElementById("delete-group").addEventListener("click", async () => {
   if (!canDeleteActiveGroup()) return;
   const groupName = bankbookDisplayName(activeBankbook);
-  const confirmed = window.confirm(`Ta bort gruppen ”${groupName}” och all testdata i den? Detta går inte att ångra.`);
+  const confirmed = window.confirm(t("deleteGroupConfirm", { name: groupName }));
   if (!confirmed) return;
   const deletedBankbookId = activeBankbook.id;
   try {
@@ -3151,7 +3352,7 @@ document.getElementById("settings-theme").addEventListener("click", (event) => {
 
 document.getElementById("recurring-settings-list").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-recurring-stop]");
-  if (!button || !confirm("Avsluta den stående betalningen? Redan skapade utgifter behålls.")) return;
+  if (!button || !confirm(t("stopRecurringConfirm"))) return;
   button.disabled = true;
   try { await store.remove(button.dataset.recurringStop); }
   catch (error) { console.error(error); button.disabled = false; setSync(false, t("syncFailed")); }
@@ -3176,10 +3377,11 @@ document.getElementById("settings-form").addEventListener("submit", async (event
   try {
     const avatarMode = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI ? "emoji" : "letter";
     const avatarEmoji = avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "";
+    const ownMemberId = currentMemberId();
     const members = {
       ...activeBankbook.members,
-      [signedInUser.uid]: {
-        ...activeBankbook.members[signedInUser.uid],
+      [ownMemberId]: {
+        ...activeBankbook.members[ownMemberId],
         name,
         color: SETTINGS_COLOR,
         avatarMode,
@@ -3261,7 +3463,7 @@ async function initializeFirebase() {
       document.getElementById("auth-password").required = false;
       updateAuthLabels();
       document.getElementById("auth-reset").hidden = true;
-      showError("auth-error", new Error("Kontot är skapat, men profilen saknas. Publicera Firestore-reglerna och slutför sedan kontot här."));
+      showError("auth-error", new Error(t("missingAccountProfile")));
       return;
     }
     await refreshBankbookMenu();
