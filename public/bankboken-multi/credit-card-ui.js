@@ -1,4 +1,4 @@
-import { createCreditCardSettings, periodForPurchase, periodForMonth, invoiceDisplayMonth, invoiceIdForMonth, summarizeInvoice, postedInvoiceCents, invoiceCostShares, toCents } from "./credit-card-model.js?v=invoice-name-20261014";
+import { createCreditCardSettings, periodForPurchase, periodForMonth, invoiceDisplayMonth, formatInvoiceMonth, invoiceIdForMonth, summarizeInvoice, postedInvoiceCents, invoiceCostShares, toCents } from "./credit-card-model.js?v=invoice-format-20261014";
 
 export function createCreditUI(ctx) {
   const $ = id => document.getElementById(id);
@@ -134,7 +134,7 @@ export function createCreditUI(ctx) {
   }
   function periodLabel(i) {
     const format = value => new Date(`${value}T12:00:00`).toLocaleDateString(ctx.language() === "en" ? "en-GB" : "sv-SE", { day: "numeric", month: "short" });
-    return `${invoiceDisplayMonth(i)} (${format(i.periodStart)}–${format(i.periodEnd)})`;
+    return `${formatInvoiceMonth(invoiceDisplayMonth(i), ctx.language())} (${format(i.periodStart)}–${format(i.periodEnd)})`;
   }
   function render() {
     $("credit-summary").hidden = !eligible() || (!active() && !ctx.invoices().length);
@@ -144,7 +144,7 @@ export function createCreditUI(ctx) {
     if (upcoming) {
       const total = summarizeInvoice(upcoming, Object.values(upcoming.purchases));
       const ownShare = ctx.slot() === "A" ? total.sharesCents.a : total.sharesCents.b;
-      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${new Date(`${invoiceDisplayMonth(upcoming)}-01T12:00:00`).toLocaleDateString(ctx.language() === "en" ? "en-GB" : "sv-SE", { month: "long", year: "numeric" })}`;
+      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${formatInvoiceMonth(invoiceDisplayMonth(upcoming), ctx.language())}`;
       $("credit-summary-total").textContent = ctx.kr(total.totalCents / 100);
       $("credit-summary-share").textContent = ctx.kr(ownShare / 100);
     } else {
