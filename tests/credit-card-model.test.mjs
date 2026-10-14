@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   allocateCents, createCreditCardSettings, summarizeInvoice,
-  previewInvoiceContribution, netPairBalanceCents, toCents, pendingCreditBalance, pairCreditBalance, periodForPurchase,
+  previewInvoiceContribution, netPairBalanceCents, toCents, invoiceDisplayMonth, pendingCreditBalance, pairCreditBalance, periodForPurchase,
 } from "../public/bankboken-multi/credit-card-model.js";
 import { balanceOf } from "../public/bankboken-multi/finance.js";
 
@@ -155,4 +155,14 @@ test("upcoming responsibility follows invoice payer, including fee-only invoices
 test("cutoff 3 places October 14 in the October 4–November 3 period", () => {
   assert.deepEqual(periodForPurchase("2026-10-14", 3), { month: "2026-11", start: "2026-10-04", end: "2026-11-03" });
   assert.equal(periodForPurchase("2026-10-03", 3).month, "2026-10");
+});
+
+
+test("invoice names follow the majority of period days, including year and February boundaries", () => {
+  const label = (start, end) => invoiceDisplayMonth({ periodStart: start, periodEnd: end });
+  assert.equal(label("2026-10-04", "2026-11-03"), "2026-10");
+  assert.equal(label("2026-09-21", "2026-10-20"), "2026-10");
+  assert.equal(label("2026-12-04", "2027-01-03"), "2026-12");
+  assert.equal(label("2026-02-16", "2026-03-15"), "2026-03");
+  assert.equal(label("2026-04-16", "2026-05-15"), "2026-05");
 });

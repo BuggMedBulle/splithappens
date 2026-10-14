@@ -260,3 +260,17 @@ export function transitionInvoice(invoice, action, payload, expectedRevision, us
   };
   return next;
 }
+
+// Stable display name: count calendar days, not purchases that may be added later.
+// In a tie the closing month wins. Stored IDs and period boundaries stay unchanged.
+export function invoiceDisplayMonth(invoice) {
+  const start = Date.parse(`${invoice.periodStart}T00:00:00Z`);
+  const end = Date.parse(`${invoice.periodEnd}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start || end - start > 366 * 86400000) throw new Error("invalidDate");
+  const counts = new Map();
+  for (let day = start; day <= end; day += 86400000) {
+    const month = new Date(day).toISOString().slice(0, 7);
+    counts.set(month, (counts.get(month) || 0) + 1);
+  }
+  return [...counts].reduce((best, item) => item[1] >= best[1] ? item : best)[0];
+}

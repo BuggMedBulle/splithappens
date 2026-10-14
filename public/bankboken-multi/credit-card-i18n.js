@@ -1,5 +1,6 @@
 export const CREDIT_TRANSLATIONS = {
   sv: {
+    creditClosingMonth: "Periodens slutmånad (manuellt)",
     creditPayableNow: "Att reglera nu", creditPendingBalance: "Kommande från kreditkort", creditNoPending: "Inget väntar på avräkning",
     creditPendingHelp: "Inklusive kortavgift. Flyttas till avräkningen när fakturan förs över.",
     creditTitle: "Gemensamt kreditkort", creditSource: "Kreditkort", creditInvoiceDetails: "Justera avgift, betalare och period", creditEnable: "Aktivera gemensamt kreditkort", creditName: "Kontonamn",
@@ -25,6 +26,7 @@ export const CREDIT_TRANSLATIONS = {
     creditStatsNotice: "Kortköp och avgifter ingår en gång. Fakturabetalningar och Swish är inte nya kostnader.",
   },
   en: {
+    creditClosingMonth: "Period closing month (manual)",
     creditPayableNow: "To settle now", creditPendingBalance: "Upcoming from credit card", creditNoPending: "Nothing awaiting settlement",
     creditPendingHelp: "Includes the card fee. Moves into settlement when the invoice is transferred.",
     creditTitle: "Shared credit card", creditSource: "Credit card", creditInvoiceDetails: "Adjust fee, payer and period", creditEnable: "Enable shared credit card", creditName: "Account name",
