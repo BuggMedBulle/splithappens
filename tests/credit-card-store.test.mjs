@@ -189,7 +189,8 @@ test("editing dates updates the automatic period, while manual periods remain ex
 test("subscription category changes apply to future private and card expenses, including stale generators", async () => {
   for (const paymentSource of ["private", "creditCard"]) {
     const f = fixture();
-    await f.store.saveEntry("subscription", { kind: "recurringTemplate", icon: "🧾", active: true, paymentSource });
+    await f.store.saveEntry("subscription", { kind: "recurringTemplate", icon: "🧾", active: true, paymentSource, generatedThrough: "2026-10-10" });
+    assert.equal(f.memory.read(prefix + "subscription").kind, "recurringTemplate");
     const fields = { ...cardPurchase(100), paymentSource, recurringId: "subscription", icon: "🧾" };
     await f.store.saveEntry("first-month", fields, { createOnly: true });
     await f.store.saveEntry("subscription", { icon: "📺" });
