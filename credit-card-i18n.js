@@ -1,5 +1,7 @@
 export const CREDIT_TRANSLATIONS = {
   sv: {
+    creditPayableNow: "Att reglera nu", creditPendingBalance: "Kommande från kreditkort", creditNoPending: "Inget väntar på avräkning",
+    creditPendingHelp: "Inklusive kortavgift. Flyttas till avräkningen när fakturan förs över.",
     creditTitle: "Gemensamt kreditkort", creditSource: "Kreditkort", creditInvoiceDetails: "Justera avgift, betalare och period", creditEnable: "Aktivera gemensamt kreditkort", creditName: "Kontonamn",
     creditPrimary: "Huvudkort", creditExtra: "Extrakort", creditPayer: "Fakturabetalare", creditFee: "Kreditkortsavgift",
     creditFeeShare: "A:s andel av avgiften (%)", creditCutoff: "Brytdag (1–31)", creditDefaultsHelp: "Nya standardvärden gäller framtida fakturor. Befintliga fakturor behåller sina inställningar. Brytdagen ingår i perioden; korta månader använder sista dagen.",
@@ -23,6 +25,8 @@ export const CREDIT_TRANSLATIONS = {
     creditStatsNotice: "Kortköp och avgifter ingår en gång. Fakturabetalningar och Swish är inte nya kostnader.",
   },
   en: {
+    creditPayableNow: "To settle now", creditPendingBalance: "Upcoming from credit card", creditNoPending: "Nothing awaiting settlement",
+    creditPendingHelp: "Includes the card fee. Moves into settlement when the invoice is transferred.",
     creditTitle: "Shared credit card", creditSource: "Credit card", creditInvoiceDetails: "Adjust fee, payer and period", creditEnable: "Enable shared credit card", creditName: "Account name",
     creditPrimary: "Primary card", creditExtra: "Additional card", creditPayer: "Invoice payer", creditFee: "Credit card fee",
     creditFeeShare: "A's share of the fee (%)", creditCutoff: "Cutoff day (1–31)", creditDefaultsHelp: "New defaults apply to future invoices. Existing invoices keep their settings. The cutoff day belongs to the period; short months use their last day.",
