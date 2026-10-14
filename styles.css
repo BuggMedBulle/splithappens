@@ -1110,7 +1110,8 @@ html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-sett
 .credit-card details[open] summary { margin-bottom: 8px; }
 .credit-card .credit-actions button { font-size: .85rem; min-width: 120px; padding: 14px; }
 .credit-history-source { color: var(--ink-2); font-size: .74rem; margin-top: 5px; }
-#credit-summary-note { margin-top: 10px; }
+#credit-summary-copy { display: block; margin-bottom: 12px; }
+#credit-open { margin-top: 14px; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: .9rem; cursor: pointer; text-align: left; }
 
 .recurring-category { grid-column: 1 / -1; display: block; min-width: 0; }
 .recurring-category .field-label { font-size: .76rem; margin-bottom: 6px; }
