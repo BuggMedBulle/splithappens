@@ -1,7 +1,7 @@
 import { createCreditStore } from "./credit-card-store.js?v=subscription-category-20261014";
-import { createCreditUI } from "./credit-card-ui.js?v=credit-preview-20261014";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-preview-20261014";
-import { pairCreditBalance, pendingCreditBalance, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-preview-20261014";
+import { createCreditUI } from "./credit-card-ui.js?v=invoice-name-20261014";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=invoice-name-20261014";
+import { pairCreditBalance, pendingCreditBalance, invoiceDisplayMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=invoice-name-20261014";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -1284,7 +1284,8 @@ function renderHistory() {
     if (e.paymentSource === "creditCard") {
       const note = document.createElement("span");
       note.className = "credit-history-source";
-      note.textContent = `💳 ${t("creditSource")} · ${e.invoiceId?.replace("credit-invoice-", "") || ""}`;
+      const invoice = CREDIT_INVOICES.find(i => i.id === e.invoiceId);
+      note.textContent = `💳 ${t("creditSource")} · ${invoice ? invoiceDisplayMonth(invoice) : e.invoiceId?.replace("credit-invoice-", "") || ""}`;
       li.querySelector(".h-main")?.appendChild(note);
     }
     const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
