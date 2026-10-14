@@ -185,3 +185,24 @@ test("editing dates updates the automatic period, while manual periods remain ex
   assert.ok(f.invoice().purchases.one);
   assert.equal(Object.keys(f.memory.read(prefix + "credit-invoice-2026-11").purchases).length, 0);
 });
+
+test("subscription category changes apply to future private and card expenses, including stale generators", async () => {
+  for (const paymentSource of ["private", "creditCard"]) {
+    const f = fixture();
+    await f.store.saveEntry("subscription", { kind: "recurringTemplate", icon: "🧾", active: true, paymentSource, generatedThrough: "2026-10-10" });
+    assert.equal(f.memory.read(prefix + "subscription").kind, "recurringTemplate");
+    const fields = { ...cardPurchase(100), paymentSource, recurringId: "subscription", icon: "🧾" };
+    await f.store.saveEntry("first-month", fields, { createOnly: true });
+    await f.store.saveEntry("subscription", { icon: "📺" });
+    await f.other.saveEntry("second-month", fields, { createOnly: true });
+    assert.equal(f.memory.read(prefix + "first-month").icon, "🧾");
+    assert.equal(f.memory.read(prefix + "second-month").icon, "📺");
+    assert.equal(f.memory.read(prefix + "second-month").amount, 100);
+    if (paymentSource === "creditCard") assert.equal(f.invoice().purchases["second-month"].icon, "📺");
+    await f.store.saveEntry("subscription", {}, { remove: true });
+    assert.equal(await f.other.saveEntry("after-stop", fields, { createOnly: true }), null);
+    assert.equal(f.memory.read(prefix + "after-stop"), undefined);
+    await f.other.saveEntry("subscription", { generatedThrough: "2026-11-10" });
+    assert.equal(f.memory.read(prefix + "subscription"), undefined);
+  }
+});

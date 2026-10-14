@@ -1111,3 +1111,12 @@ html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-sett
 .credit-card .credit-actions button { font-size: .85rem; min-width: 120px; padding: 14px; }
 .credit-history-source { color: var(--ink-2); font-size: .74rem; margin-top: 5px; }
 #credit-summary-note { margin-top: 10px; }
+
+.recurring-category { grid-column: 1 / -1; display: block; min-width: 0; }
+.recurring-category .field-label { font-size: .76rem; margin-bottom: 6px; }
+.recurring-category select {
+  width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--r-field); background: var(--card); color: var(--ink); font: inherit; font-size: .88rem;
+}
+.recurring-category select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.recurring-category select:disabled { opacity: .6; }

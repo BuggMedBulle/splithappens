@@ -22,6 +22,7 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
       const book = await read(tx, bookRef);
       const old = await read(tx, ref(id));
       if (createOnly && old) return id;
+      if (Object.hasOwn(patch, "generatedThrough") && patch.kind !== "recurringTemplate" && old?.kind !== "recurringTemplate") return null;
       if (old?.kind === "creditInvoice") throw new Error("invoiceProtected");
       if (expectedVersion != null && (old?.financialVersion || 0) !== expectedVersion) throw new Error("staleInvoice");
       const next = remove ? null : { ...old, ...patch, id, updatedBy: userId, financialVersion: (old?.financialVersion || 0) + 1 };
@@ -31,7 +32,8 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
       const hasCard = financialChanged && old?.kind !== "recurringTemplate" && next?.kind !== "recurringTemplate" && (old?.paymentSource === "creditCard" || next?.paymentSource === "creditCard");
       if (next?.recurringId && createOnly) {
         const template = await read(tx, ref(next.recurringId));
-        if (template?.active === false) return null;
+        if (!template || template.active === false) return null;
+        next.icon = template.icon || next.icon || "🧾";
       }
       const writes = new Map();
       if (hasCard) {
