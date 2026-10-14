@@ -1,28 +1,18 @@
 # Split Happens
 
-Split Happens lägger till riktiga användarkonton och flera separata delningar. Den befintliga Helo/Halvis-versionen i `bankboken/` påverkas inte.
+Split Happens är en app för att dela utgifter och inkomster i par eller grupper med upp till
+tio personer. Appen använder Firebase Authentication och Cloud Firestore för inloggning,
+grupper och synkronisering mellan enheter.
 
-## Firebase-inställningar
+Par med två medlemmar har även stöd för återkommande betalningar. Grupper med tre till tio
+medlemmar får dynamisk kostnadsdelning och förslag på effektiva Swish-betalningar.
 
-1. Öppna Firebase Console och projektet `hh-bankboken`.
-2. Gå till **Authentication → Sign-in method** och aktivera **Email/Password**.
-3. Gå till **Firestore Database → Rules**.
-4. Ersätt reglerna med innehållet i `firestore.rules` och publicera dem.
+## Utveckling och tester
 
-Reglerna låter tills vidare den gamla toppnivåsamlingen `entries` fungera som tidigare. Det gör att nuvarande Helo/Halvis-app fortsätter fungera under testperioden. När den datan har migrerats kan kompatibilitetsregeln tas bort.
+Kör `npm test` från repositoryts rot för ekonomiberäkningar och statiska appkontroller.
+Kör `npm run build` separat för webbplatsens byggkontroll.
 
-## Så fungerar det
-
-- Varje person skapar ett eget konto med namn, e-post, lösenord och Swishnummer.
-- Den första personen skapar en Bankbok och skickar dess inbjudningskod till den andra.
-- Den andra personen går med via koden.
-- Varje Bankbok kan ha högst två personer.
-- Utgifter ligger under `bankbooks/{bankbookId}/entries` och synkas i realtid endast mellan medlemmarna.
-- Kvittobilder komprimeras i webbläsaren och lagras separat under `bankbooks/{bankbookId}/receipts`.
-- Separat lagring gör att historiklistan förblir snabb och att bilden bara hämtas när ett utlägg öppnas.
-- Bara de två medlemmarna i delningen kan läsa, lägga till eller ta bort kvitton.
-- Lösningen fungerar på Firestores kostnadsfria Spark-nivå och kräver inte Firebase Storage.
-
-## Viktigt före produktionspublicering
-
-Testa v2 på localhost med två olika konton, gärna i ett vanligt och ett privat webbläsarfönster. Publicera inte mappen som ersättning för nuvarande `bankboken/` förrän konton, regler, inbjudan och synk har verifierats.
+Gemensamt kreditkort är ett frivilligt tillval för par. Se `docs/shared-credit-card.md`
+för användning, lagring, korrigeringar och verifieringsgränser. Kör
+`npm run test:browser` för hela användarflödet med simulerad Firebase-data.
+Vid publicering ska samtliga JavaScript-moduler i denna mapp följa med.

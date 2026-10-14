@@ -1075,3 +1075,39 @@ html[data-theme="dark"] .profile-colors button { background: var(--choice-color)
 }
 .history-pagination button:disabled { opacity: 0.3; cursor: default; }
 .history-pagination span { min-width: 68px; text-align: center; color: var(--ink-2); font-size: 0.82rem; }
+
+/* Shared credit account: reuse the existing modal, field and color tokens. */
+.credit-card { max-width: 620px; }
+.credit-card select, #credit-settings select, #credit-purchase-fields select {
+  width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 12px;
+  color: var(--ink); background: var(--field); border: 1px solid var(--line); font: inherit;
+}
+.credit-check { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+.credit-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--sage-strong); }
+.credit-totals { margin: 16px 0; padding: 12px; background: var(--field); border-radius: 14px; }
+.credit-total { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font-size: .9rem; }
+.credit-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.credit-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.credit-actions button { flex: 1; min-width: 160px; }
+.credit-transaction { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; font: inherit; }
+.credit-transaction small, .credit-audit small { display: block; color: var(--ink-2); font-size: .8rem; margin-top: 5px; }
+.credit-audit { padding-left: 20px; }
+.credit-audit li { margin: 12px 0; overflow-wrap: anywhere; }
+#credit-source-button { font-size: .76rem; }
+.credit-summary strong { font-size: 1rem; }
+.credit-card button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 420px) { .credit-total { gap: 8px; font-size: .82rem; } .credit-total span { max-width: 65%; } }
+
+.credit-card input:not([type="checkbox"]), #credit-settings input:not([type="checkbox"]), #credit-purchase-fields input[type="month"] {
+  display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 52px;
+  padding: 15px 16px; font: inherit; font-size: 1.05rem; background: var(--field);
+  border: 1px solid transparent; border-radius: var(--r-field); color: var(--ink); color-scheme: light;
+}
+html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-settings input, html[data-theme="dark"] #credit-purchase-fields input { color-scheme: dark; }
+.credit-card input:focus, #credit-settings input:focus { outline: none; border-color: var(--ink); }
+.credit-card details { margin: 16px 0; }
+.credit-card summary { cursor: pointer; color: var(--ink-2); font-size: .9rem; padding: 10px 0; }
+.credit-card details[open] summary { margin-bottom: 8px; }
+.credit-card .credit-actions button { font-size: .85rem; min-width: 120px; padding: 14px; }
+.credit-history-source { color: var(--ink-2); font-size: .74rem; margin-top: 5px; }
+#credit-summary-note { margin-top: 10px; }
