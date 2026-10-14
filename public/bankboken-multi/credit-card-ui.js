@@ -1,4 +1,4 @@
-import { createCreditCardSettings, periodForPurchase, invoiceIdForMonth, summarizeInvoice, postedInvoiceCents, invoiceCostShares, toCents } from "./credit-card-model.js";
+import { createCreditCardSettings, periodForPurchase, periodForMonth, invoiceDisplayMonth, invoiceIdForMonth, summarizeInvoice, postedInvoiceCents, invoiceCostShares, toCents } from "./credit-card-model.js?v=invoice-name-20261014";
 
 export function createCreditUI(ctx) {
   const $ = id => document.getElementById(id);
@@ -85,7 +85,12 @@ export function createCreditUI(ctx) {
       $("credit-purchase-month").disabled = !$("credit-manual").checked;
       try {
         if (!$("credit-manual").checked) $("credit-purchase-month").value = periodForPurchase($("e-date").value || ctx.today(), settings().cutoffDay).month;
-      } catch { $("credit-purchase-month").value = ""; }
+        const month = $("credit-purchase-month").value;
+        const existing = ctx.invoices().find(i => i.id === invoiceIdForMonth(month));
+        const period = periodForMonth(month, settings().cutoffDay);
+        $("credit-purchase-period").textContent = periodLabel(existing || { periodStart: period.start, periodEnd: period.end });
+      } catch { $("credit-purchase-month").value = ""; $("credit-purchase-period").textContent = ""; }
+      $("credit-purchase-month").closest("label").hidden = !$("credit-manual").checked;
       $("credit-excluded-fields").hidden = !(ctx.excludedAmount() > 0 || ctx.editingEntry()?.excludedAmount > 0);
     }
   }
@@ -133,7 +138,7 @@ export function createCreditUI(ctx) {
   }
   function periodLabel(i) {
     const format = value => new Date(`${value}T12:00:00`).toLocaleDateString(ctx.language() === "en" ? "en-GB" : "sv-SE", { day: "numeric", month: "short" });
-    return `${i.month} (${format(i.periodStart)}–${format(i.periodEnd)})`;
+    return `${invoiceDisplayMonth(i)} (${format(i.periodStart)}–${format(i.periodEnd)})`;
   }
   function render() {
     $("credit-summary").hidden = !eligible() || (!active() && !ctx.invoices().length);
