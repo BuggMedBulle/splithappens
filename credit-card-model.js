@@ -274,3 +274,8 @@ export function invoiceDisplayMonth(invoice) {
   }
   return [...counts].reduce((best, item) => item[1] >= best[1] ? item : best)[0];
 }
+
+export function formatInvoiceMonth(month, language = "sv") {
+  const label = new Date(`${month}-01T12:00:00`).toLocaleDateString(language === "en" ? "en-GB" : "sv-SE", { month: "short", year: "numeric" }).replace(/\./g, "");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
