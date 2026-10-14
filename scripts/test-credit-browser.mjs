@@ -65,7 +65,11 @@ try {
   assert.match(await page.locator("#balance-heading").innerText(), /1\s?200/);
   assert.equal(await page.locator("#balance-label").textContent(), "Att reglera nu");
   assert.match(await page.locator("#credit-pending-amount").innerText(), /[−-]4\s?287,50/);
-  assert.match(await page.locator("#credit-summary-copy").innerText(), /21 sep.*20 okt/);
+  assert.match(await page.locator("#credit-summary-copy").innerText(), /oktober 2026/);
+  assert.equal(await page.locator("#credit-trigger, #credit-payer, #credit-fee-share, #credit-invoice-payer, #credit-invoice-share").count(), 0);
+  assert.match(await page.locator("#credit-summary-total").innerText(), /8\s?375,00/);
+  assert.match(await page.locator("#credit-summary-share").innerText(), /4\s?287,50/);
+  assert.equal(await page.locator("#credit-open").innerText(), "Visa alla fakturor →");
   await mkdir(new URL("../work/", import.meta.url), { recursive: true });
   await page.locator("#saldo-card").scrollIntoViewIfNeeded();
   await page.screenshot({ path: new URL("../work/credit-balance-preview.png", import.meta.url).pathname, fullPage: false });

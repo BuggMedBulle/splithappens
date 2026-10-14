@@ -42,11 +42,10 @@ export function createCreditUI(ctx) {
     const config = settings();
     $("credit-enable").checked = config.enabled;
     $("credit-name").value = config.name;
-    for (const [id, key] of [["credit-primary", "primaryCardMemberId"], ["credit-extra", "extraCardMemberId"], ["credit-payer", "invoicePayerMemberId"]]) {
+    for (const [id, key] of [["credit-primary", "primaryCardMemberId"], ["credit-extra", "extraCardMemberId"]]) {
       membersSelect($(id)); $(id).value = config[key];
     }
     $("credit-fee").value = config.feeCents / 100;
-    $("credit-fee-share").value = config.feeShareA * 100;
     $("credit-cutoff").value = config.cutoffDay || "";
     $("credit-settings-fields").hidden = !config.enabled;
   }
@@ -57,8 +56,8 @@ export function createCreditUI(ctx) {
     const config = createCreditCardSettings(a, b, {
       enabled, name: $("credit-name").value.trim() || settings().name,
       primaryCardMemberId: $("credit-primary").value, extraCardMemberId: $("credit-extra").value,
-      invoicePayerMemberId: $("credit-payer").value,
-      feeCents: toCents(Number($("credit-fee").value)), feeShareA: Number($("credit-fee-share").value) / 100,
+      invoicePayerMemberId: $("credit-primary").value,
+      feeCents: toCents(Number($("credit-fee").value)), feeShareA: 0.5,
       cutoffDay: $("credit-cutoff").value ? Number($("credit-cutoff").value) : null,
     });
     await ctx.store().credit.saveSettings(config);
@@ -115,7 +114,7 @@ export function createCreditUI(ctx) {
     if (!reason?.trim()) throw new Error("correctionReasonRequired");
     return reason.trim();
   }
-  function reset() { selectedId = ""; dirtyInvoice = false; creatingKey = ""; editingCredit = false; $("credit-modal").hidden = true; $("credit-summary").hidden = true; $("credit-trigger").hidden = true; }
+  function reset() { selectedId = ""; dirtyInvoice = false; creatingKey = ""; editingCredit = false; $("credit-modal").hidden = true; $("credit-summary").hidden = true; }
   async function ensureCurrent() {
     if (!active()) return;
     let month;
@@ -129,9 +128,6 @@ export function createCreditUI(ctx) {
   function fillInvoice(i) {
     $("credit-invoice-form").dataset.revision = String(i.revision);
     $("credit-actual").value = i.actualTotalCents == null ? "" : i.actualTotalCents / 100;
-    $("credit-invoice-fee").value = i.feeCents / 100;
-    $("credit-invoice-share").value = i.feeShareA * 100;
-    membersSelect($("credit-invoice-payer")); $("credit-invoice-payer").value = i.invoicePayerMemberId;
     $("credit-due").value = i.dueDate || "";
     $("credit-period-start").value = i.periodStart;
     $("credit-period-end").value = i.periodEnd;
@@ -142,16 +138,20 @@ export function createCreditUI(ctx) {
   }
   function render() {
     $("credit-summary").hidden = !eligible() || (!active() && !ctx.invoices().length);
-    $("credit-trigger").hidden = $("credit-summary").hidden;
     if ($( "credit-summary").hidden) return;
     const all = [...ctx.invoices()].sort((a, b) => b.month.localeCompare(a.month));
     const upcoming = all.find(i => i.status !== "transferred") || all[0];
     if (upcoming) {
       const total = summarizeInvoice(upcoming, Object.values(upcoming.purchases));
       const ownShare = ctx.slot() === "A" ? total.sharesCents.a : total.sharesCents.b;
-      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${periodLabel(upcoming)} · ${ctx.kr(total.totalCents / 100)} · ${ctx.t("creditYourShare")}: ${ctx.kr(ownShare / 100)}`;
-      $("credit-summary-note").textContent = ctx.t(upcoming.status === "transferred" ? "creditTransferred" : Object.keys(upcoming.transfers || {}).length ? "creditPendingCorrection" : "creditPreliminary");
-    } else $("credit-summary-copy").textContent = ctx.t("creditNoInvoices");
+      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${new Date(`${invoiceDisplayMonth(upcoming)}-01T12:00:00`).toLocaleDateString(ctx.language() === "en" ? "en-GB" : "sv-SE", { month: "long", year: "numeric" })}`;
+      $("credit-summary-total").textContent = ctx.kr(total.totalCents / 100);
+      $("credit-summary-share").textContent = ctx.kr(ownShare / 100);
+    } else {
+      $("credit-summary-copy").textContent = ctx.t("creditNoInvoices");
+      $("credit-summary-total").textContent = ctx.kr(0);
+      $("credit-summary-share").textContent = ctx.kr(0);
+    }
     if ($("credit-modal").hidden) return;
     if (!all.some(i => i.id === selectedId)) { selectedId = all[0]?.id || ""; dirtyInvoice = false; }
     $("credit-invoice-select").innerHTML = all.map(i => option(i.id, periodLabel(i))).join("");
@@ -204,12 +204,12 @@ export function createCreditUI(ctx) {
     $("credit-close").focus();
   }
   $("credit-enable").addEventListener("change", () => { $("credit-settings-fields").hidden = !$("credit-enable").checked; });
-  for (const id of ["credit-trigger", "credit-open"]) $(id).addEventListener("click", open);
-  $("credit-close").addEventListener("click", () => { $("credit-modal").hidden = true; $("credit-trigger").focus(); });
+  $("credit-open").addEventListener("click", open);
+  $("credit-close").addEventListener("click", () => { $("credit-modal").hidden = true; $("credit-open").focus(); });
   $("credit-modal").addEventListener("click", event => { if (event.target === event.currentTarget) $("credit-modal").hidden = true; });
   document.addEventListener("keydown", e => {
     if ($("credit-modal").hidden) return;
-    if (e.key === "Escape") { $("credit-modal").hidden = true; $("credit-trigger").focus(); }
+    if (e.key === "Escape") { $("credit-modal").hidden = true; $("credit-open").focus(); }
     if (e.key === "Tab") {
       const items = [...$("credit-modal").querySelectorAll("button, input, select, summary, [tabindex='0']")].filter(el => !el.disabled && el.getClientRects().length);
       if (e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); items.at(-1)?.focus(); }
@@ -227,8 +227,7 @@ export function createCreditUI(ctx) {
     run(e.submitter, async () => {
       await ctx.store().credit.invoiceAction(selectedId, "edit", {
         actualTotalCents: $("credit-actual").value === "" ? null : toCents(Number($("credit-actual").value)),
-        feeCents: toCents(Number($("credit-invoice-fee").value)), feeShareA: Number($("credit-invoice-share").value) / 100,
-        invoicePayerMemberId: $("credit-invoice-payer").value, dueDate: $("credit-due").value,
+        dueDate: $("credit-due").value,
         periodStart: $("credit-period-start").value, periodEnd: $("credit-period-end").value, reason: $("credit-reason").value,
       }, Number($("credit-invoice-form").dataset.revision));
       dirtyInvoice = false; render();

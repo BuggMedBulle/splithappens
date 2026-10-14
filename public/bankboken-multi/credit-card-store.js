@@ -15,7 +15,10 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
     const a = profiles.find(([, p]) => p.slot === "A")?.[0];
     const b = profiles.find(([, p]) => p.slot === "B")?.[0];
     if (book.groupType === "group" || book.multiGroup === true || profiles.length !== 2) throw new Error("creditPairOnly");
-    return { a, b, settings: createCreditCardSettings(a, b, book.creditCard || {}) };
+    const settings = createCreditCardSettings(a, b, book.creditCard || {});
+    settings.feeShareA = 0.5;
+    settings.invoicePayerMemberId = settings.primaryCardMemberId;
+    return { a, b, settings };
   };
   async function saveEntry(id, patch, { remove = false, createOnly = false, reason = "", expectedVersion } = {}) {
     return fs.runTransaction(db, async tx => {
@@ -100,6 +103,8 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
         const book = await read(tx, bookRef);
         const { a, b } = config(book);
         const validated = createCreditCardSettings(a, b, settings);
+        validated.feeShareA = 0.5;
+        validated.invoicePayerMemberId = validated.primaryCardMemberId;
         if (validated.enabled && validated.cutoffDay == null) throw new Error("configureCutoff");
         tx.update(bookRef, { creditCard: validated });
       });

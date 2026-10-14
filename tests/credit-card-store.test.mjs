@@ -206,3 +206,19 @@ test("subscription category changes apply to future private and card expenses, i
     assert.equal(f.memory.read(prefix + "subscription"), undefined);
   }
 });
+
+
+test("new invoices use equal fees and the primary holder as payer while old snapshots stay intact", async () => {
+  const legacy = { ...settings, primaryCardMemberId: "bob", extraCardMemberId: "alice", invoicePayerMemberId: "alice", feeShareA: 0.8 };
+  const memory = memoryDatabase({ "bankbooks/pair": { ...book, creditCard: legacy } });
+  const store = createCreditStore({ ...memory, bookId: "pair", userId: "alice", clock: () => 100 });
+  await store.ensureInvoice("2026-10");
+  const original = memory.read(prefix + invoiceId);
+  assert.equal(original.invoicePayerMemberId, "bob");
+  assert.equal(original.feeShareA, 0.5);
+  await store.saveSettings({ ...legacy, primaryCardMemberId: "alice", extraCardMemberId: "bob" });
+  await store.ensureInvoice("2026-11");
+  assert.equal(memory.read(prefix + "credit-invoice-2026-11").invoicePayerMemberId, "alice");
+  assert.deepEqual(memory.read(prefix + invoiceId), original);
+  assert.equal(memory.read("bankbooks/pair").creditCard.feeShareA, 0.5);
+});
