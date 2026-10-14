@@ -1,3 +1,5 @@
+> Historiskt underlag från session 1. De återstående stegen är nu implementerade; aktuell dokumentation finns i `shared-credit-card.md`.
+
 # Gemensamt kreditkort — session 1
 
 ## Utgångsläge

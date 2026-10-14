@@ -1,3 +1,7 @@
+import { createCreditStore } from "./credit-card-store.js";
+import { createCreditUI } from "./credit-card-ui.js";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js";
+import { pairCreditBalance, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -211,6 +215,8 @@ let AVATAR_TARGET = "settings";
 let CREATED_BANKBOOK = null;
 let CLAIM_MEMBER_RESOLVE = null;
 
+for (const lang of ["sv", "en"]) Object.assign(TRANSLATIONS[lang], CREDIT_TRANSLATIONS[lang]);
+
 function validProfileColor(color) {
   return PROFILE_COLORS.includes(String(color || "").toLowerCase());
 }
@@ -344,6 +350,7 @@ let store; // { subscribe(cb), add(entry), update(id, entry), remove(id) }
 async function initStore() {
   const col = fs.collection(db, "bankbooks", activeBankbook.id, "entries");
   const receipts = fs.collection(db, "bankbooks", activeBankbook.id, "receipts");
+  const credit = createCreditStore({ fs, db, bookId: activeBankbook.id, userId: signedInUser.uid });
   store = {
     subscribe(cb, onError) {
       const q = fs.query(col, fs.orderBy("ts", "desc"));
@@ -354,14 +361,19 @@ async function initStore() {
           onError?.(err);
         });
     },
-    async add(entry) {
-      const documentRef = await fs.addDoc(col, { ...entry, updatedBy: signedInUser.uid });
-      return documentRef.id;
+    credit,
+    async add(entry, options = {}) {
+      const id = fs.doc(col).id;
+      return credit.saveEntry(id, entry, options);
     },
-    async update(id, entry) { await fs.updateDoc(fs.doc(col, id), { ...entry, updatedBy: signedInUser.uid }); },
+    async update(id, entry, options = {}) { return credit.saveEntry(id, entry, options); },
+    async createRecurring(template) { const id = fs.doc(col).id; return credit.saveEntry(id, template, { createOnly: true }); },
+    async createIfMissing(id, entry) { return credit.saveEntry(id, entry, { createOnly: true }); },
     async remove(id) {
+      const entry = ENTRIES.find(e => e.id === id);
+      const reason = creditUI?.correctionReason(entry) || "";
+      await credit.saveEntry(id, {}, { remove: true, reason, expectedVersion: entry?.financialVersion });
       await fs.deleteDoc(fs.doc(receipts, id));
-      await fs.deleteDoc(fs.doc(col, id));
     },
     async getReceipt(id) {
       const snapshot = await fs.getDoc(fs.doc(receipts, id));
@@ -490,6 +502,10 @@ const kr0 = (n) =>
 //  RENDER
 // ============================================================
 let ENTRIES = [];
+let CREDIT_INVOICES = [];
+let creditUI;
+let PENDING_PAIR_SETTLEMENT = null;
+function currentPairBalance() { return pairCreditBalance(ENTRIES, CREDIT_INVOICES, balanceOf); }
 let RECURRING_TEMPLATES = [];
 let GENERATING_RECURRING = false;
 let CURRENT_USER = localStorage.getItem("bankboken-person");
@@ -520,6 +536,7 @@ const STATISTICS_CATEGORY_KEYS = {
   "🎁": "gifts",
   "📺": "streaming",
   "🧾": "otherCategory",
+  "💳": "creditFeeCategory",
 };
 
 const STATISTICS_CATEGORY_ALIASES = {
@@ -578,6 +595,10 @@ function statisticsPeriodLabel(range) {
 }
 
 function statisticsCostShares(entry, profiles) {
+  if (entry.paymentSource === "creditCard" || entry.paymentSource === "creditFee") {
+    const invoice = CREDIT_INVOICES.find(i => i.id === entry.invoiceId);
+    if (invoice) { const shares = invoiceCostShares(entry, invoice); return [[invoice.memberAId, shares.a / 100], [invoice.memberBId, shares.b / 100]]; }
+  }
   const direction = entry.type === "income" ? -1 : 1;
   const profileUids = new Set(profiles.map(([uid]) => uid));
   const participants = (entry.participantUids || []).filter((uid) => profileUids.has(uid));
@@ -609,7 +630,7 @@ function renderStatistics() {
   if (!modal || modal.hidden || !activeBankbook) return;
   const profiles = displayGroupProfiles();
   const range = statisticsRange();
-  const statisticsEntries = ENTRIES.filter((entry) => {
+  const statisticsEntries = [...ENTRIES, ...invoiceFeeEntries(CREDIT_INVOICES)].filter((entry) => {
     if (!["expense", "income"].includes(entry.type)) return false;
     const timestamp = entry.ts?.toMillis?.() ?? Number(entry.ts);
     if (!Number.isFinite(timestamp)) return false;
@@ -796,6 +817,7 @@ function render() {
   renderHistory();
   renderRecurringSettings();
   renderStatistics();
+  creditUI?.render();
 }
 
 function renderRecurringSettings() {
@@ -838,7 +860,9 @@ async function ensureRecurringEntries(templates, existingIds) {
           await store.createIfMissing(occurrenceId, {
             type: "expense", desc: template.desc, amount: template.amount, icon: template.icon || ICON_DEFAULT,
             payer: template.payer, split: template.split || "even", shareA: template.shareA ?? null,
-            excludedAmount: 0, ts: expenseTimestamp(occurrenceDate), recurringId: template.id, recurringOccurrence: occurrenceDate,
+            paymentSource: template.paymentSource || "private", cardMemberId: template.cardMemberId || null,
+            purchaseDate: occurrenceDate, manualInvoiceMonth: null,
+            excludedAmount: template.excludedAmount || 0, excludedCostMemberId: template.excludedCostMemberId || null, ts: expenseTimestamp(occurrenceDate), recurringId: template.id, recurringOccurrence: occurrenceDate,
           });
           existingIds.add(occurrenceId);
         }
@@ -873,7 +897,7 @@ function makeSwipeableRow(row, entry, onOpen) {
     event.stopPropagation();
     if (!confirm(t("deleteEntry"))) return;
     closeSwipeRow(row);
-    await store.remove(entry.id);
+    try { await store.remove(entry.id); } catch (error) { showReceiptError(creditUI.error(error)); }
   });
 
   row.classList.add("history-row");
@@ -959,13 +983,13 @@ function renderBalance() {
   document.getElementById("balance-show-all").hidden = true;
   SHOW_ALL_GROUP_DEBTS = false;
   document.getElementById("swish-suggestions").hidden = true;
-  const bal = balanceOf(ENTRIES);
+  const bal = currentPairBalance();
   const heading = document.getElementById("balance-heading");
   const sub = document.getElementById("balance-sub");
   const btn = document.getElementById("settle-btn");
   const panel = document.getElementById("settle-panel");
 
-  panel.hidden = true;
+  panel.hidden = !PENDING_PAIR_SETTLEMENT;
   btn.hidden = true;
   if (Math.abs(bal) < 0.01) {
     setBalanceHeading(heading, 0);
@@ -1222,7 +1246,7 @@ function renderHistory() {
     } else {
       const shares = sharesOf(e);
       const payerShare = e.payer === "A" ? shares.a : shares.b;
-      const historyCopy = e.participantUids?.length
+      const historyCopy = e.paymentSource === "creditCard" ? splitLabel(e) : e.participantUids?.length
         ? splitLabel(e)
         : Math.abs(payerShare - e.amount) < 0.01
         ? `${PEOPLE[e.payer]?.name || subjectName(e.payer)} ${t("treated", { recipient: objectName(otherPersonKey(e.payer)) })}`
@@ -1234,6 +1258,12 @@ function renderHistory() {
           <div class="h-sub">${historyEntryAvatar(e)}<span>${escapeHtml(historyCopy)}</span></div>
         </div>
         <div class="h-amt">${kr(e.amount)}</div>`;
+    }
+    if (e.paymentSource === "creditCard") {
+      const note = document.createElement("span");
+      note.className = "credit-history-source";
+      note.textContent = `💳 ${t("creditSource")} · ${e.invoiceId?.replace("credit-invoice-", "") || ""}`;
+      li.querySelector(".h-main")?.appendChild(note);
     }
     const openEntry = e.type !== "settlement" ? () => startEditing(e) : null;
     const content = makeSwipeableRow(li, e, openEntry);
@@ -1281,6 +1311,7 @@ function onSettleClick() {
   if (usesGroupExperience()) {
     PENDING_GROUP_SETTLEMENT = { toUid: btn.dataset.payeeUid, amount: Number(amount) };
   }
+  if (!usesGroupExperience()) PENDING_PAIR_SETTLEMENT = { id: `swish-${crypto.randomUUID()}`, payer: CURRENT_USER, amount: Number(amount), ts: Date.now() };
   const link = buildSwishLink(payee, amount, settlementMessage());
 
   document.getElementById("settle-panel").hidden = false;
@@ -1308,13 +1339,10 @@ async function confirmSettlement() {
     document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  const bal = balanceOf(ENTRIES);
-  if (Math.abs(bal) < 0.01) return;
-  const payer = bal > 0 ? "B" : "A";
-  if (CURRENT_USER !== payer) return;
-  await store.add({
-    type: "settlement", payer, amount: Math.abs(bal), ts: Date.now(),
-  });
+  const pending = PENDING_PAIR_SETTLEMENT;
+  if (!pending || pending.payer !== CURRENT_USER) return;
+  await store.createIfMissing(pending.id, { type: "settlement", payer: pending.payer, amount: pending.amount, ts: pending.ts });
+  PENDING_PAIR_SETTLEMENT = null;
   document.getElementById("settle-panel").hidden = true;
   document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1340,6 +1368,7 @@ function setActive(segId, val, key = "val") {
 
 let getEntryType, getPayer, getSplit;
 let EDITING_ID = null;
+let EDITING_ENTRY = null;
 let EDITING_ORIGINAL = null;
 let EDITING_HAS_RECEIPT = false;
 let pendingReceiptData = "";
@@ -1489,7 +1518,7 @@ function updatePersonLabels() {
   rightPayerButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(rightKey)));
   leftPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[leftKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
   rightPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[rightKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
-  payer.append(leftPayerButton, rightPayerButton);
+  payer.append(leftPayerButton, rightPayerButton, document.getElementById("credit-source-button"));
 
   const presets = document.querySelector("#e-split .split-presets");
   const leftSplit = leftKey === "A" ? "a" : "b";
@@ -1541,6 +1570,8 @@ function onSplitChange(split) {
 
 function onEntryTypeChange(type) {
   const isIncome = type === "income";
+  if (isIncome && getPayer?.() === "creditCard") setActive("e-payer", CURRENT_USER);
+  creditUI?.controls();
   const recurringField = document.getElementById("recurring-field");
   recurringField.hidden = !isPairExperience() || isIncome || Boolean(EDITING_ID);
   if (recurringField.hidden) document.getElementById("e-recurring").checked = false;
@@ -1596,6 +1627,7 @@ function editingFormState() {
     multiSplitMode: MULTI_EXPENSE_MODE ? MULTI_SPLIT_MODE : "",
     participantUids: MULTI_EXPENSE_MODE ? selectedMultiParticipants().sort() : [],
     icon: getIcon(),
+    creditFields: creditUI?.cardSelected() ? creditUI.purchaseFields(Number(document.getElementById("e-amount").value)) : null,
     receiptAction: pendingReceiptData ? "replace" : (removeExistingReceipt ? "remove" : "keep"),
   });
 }
@@ -2167,6 +2199,7 @@ function resetExpenseForm() {
   document.getElementById("expense-form-home").appendChild(form);
   document.getElementById("edit-modal").hidden = true;
   EDITING_ID = null;
+  EDITING_ENTRY = null;
   EDITING_ORIGINAL = null;
   EDITING_HAS_RECEIPT = false;
   form.reset();
@@ -2196,6 +2229,7 @@ function resetExpenseForm() {
   receiptScannedTotal = 0;
   renderReceiptItems();
   renderMultiExpenseControls();
+  creditUI?.controls(null);
   updateCustomSplitLabels();
   setIcon(ICON_DEFAULT);
   closeIconPop();
@@ -2206,6 +2240,7 @@ function resetExpenseForm() {
 
 async function startEditing(entry) {
   EDITING_ID = entry.id;
+  EDITING_ENTRY = structuredClone(entry);
   EDITING_ORIGINAL = null;
   EDITING_HAS_RECEIPT = Boolean(entry.hasReceipt);
   document.getElementById("edit-form-modal").appendChild(document.getElementById("expense-form"));
@@ -2215,7 +2250,8 @@ async function startEditing(entry) {
   document.getElementById("e-amount").value = entry.amount;
   document.getElementById("e-date").value = dateInputValue(entry.ts);
   setActive("e-type", entry.type === "income" ? "income" : "expense");
-  setActive("e-payer", entry.payer);
+  setActive("e-payer", entry.paymentSource === "creditCard" ? "creditCard" : entry.payer);
+  creditUI?.controls(entry);
   setActive("e-split", entry.split || "even");
   document.getElementById("e-custom-share").value = entry.split === "custom"
     ? String(Math.round((CURRENT_USER === "A" ? 1 - entry.shareA : entry.shareA) * 100))
@@ -2267,6 +2303,12 @@ function updatePreview() {
   const other = payer === "A" ? "B" : "A";
   const el = document.getElementById("split-preview");
 
+  creditUI?.controls();
+  if (creditUI?.cardSelected()) {
+    el.hidden = false;
+    el.textContent = t("creditPreliminary");
+    return;
+  }
   if (amount <= 0) { el.hidden = true; return; }
   if (MULTI_EXPENSE_MODE) {
     const participants = MULTI_SPLIT_MODE === "equal" ? activeGroupProfiles().length : selectedMultiParticipants().length;
@@ -2299,6 +2341,7 @@ function initApp() {
     updateEditingDirtyState();
   });
   getPayer = initSegments("e-payer", () => {
+    creditUI?.controls();
     updatePreview();
     updateEditingDirtyState();
   });
@@ -2548,7 +2591,7 @@ function initApp() {
     const desc = document.getElementById("e-desc").value.trim();
     const amount = parseFloat(document.getElementById("e-amount").value);
     const date = dateInput.value;
-    if (!desc || !(amount > 0) || !date) return;
+    if (!desc || !Number.isFinite(amount) || (creditUI?.cardSelected() ? amount + receiptItemsExcludedAmount() === 0 : !(amount > 0)) || !date) return;
     const type = getEntryType();
     const split = getSplit();
     const recurring = isPairExperience() && type === "expense" && !EDITING_ID && document.getElementById("e-recurring").checked;
@@ -2570,34 +2613,40 @@ function initApp() {
       : participantSlots.length === 1 && participantSlots[0] === "B"
       ? "b"
       : split;
-    const existingEntry = EDITING_ID ? ENTRIES.find((entry) => entry.id === EDITING_ID) : null;
+    const existingEntry = EDITING_ID ? EDITING_ENTRY : null;
     const expense = {
       type, desc, amount, icon: getIcon(),
-      payer: legacyPayer, split: effectiveSplit,
+      ...creditUI.purchaseFields(amount),
+      payer: legacyPayer === "creditCard" ? activeGroupProfiles().find(([uid]) => uid === document.getElementById("credit-card-used").value)?.[1]?.slot || CURRENT_USER : legacyPayer, split: effectiveSplit,
       shareA: effectiveSplit === "custom" ? customShareA() : null,
-      payerUid: payerUid || null,
+      payerUid: creditUI.cardSelected() ? document.getElementById("credit-card-used").value : payerUid || null,
       multiSplitMode: MULTI_EXPENSE_MODE ? MULTI_SPLIT_MODE : null,
       participantUids: MULTI_EXPENSE_MODE ? participantUids : null,
-      excludedAmount: 0,
+      excludedAmount: creditUI.cardSelected() ? creditUI.purchaseFields(amount).excludedAmount : 0,
       ts: expenseTimestamp(date, existingEntry?.ts),
     };
     const submitButton = ev.submitter;
     submitButton.disabled = true;
     showReceiptError();
-    let createdEntryId = "";
+    let createdRecurringId = "";
+    let savedExpense = false;
     try {
+      const reason = creditUI.correctionReason(existingEntry, expense.invoiceId);
       let recurringId = "";
       if (recurring) {
         recurringId = await store.createRecurring({
           kind: "recurringTemplate", active: true, interval: "monthly",
           desc: expense.desc, amount: expense.amount, icon: expense.icon,
           payer: expense.payer, split: expense.split, shareA: expense.shareA,
+          paymentSource: expense.paymentSource, cardMemberId: expense.cardMemberId || null, excludedAmount: expense.excludedAmount, excludedCostMemberId: expense.excludedCostMemberId || null,
           startDate: date, generatedThrough: date, dayOfMonth: Number(date.split("-")[2]), ts: expense.ts,
         });
       }
+      createdRecurringId = recurringId;
       const expenseToSave = recurringId ? { ...expense, recurringId, recurringOccurrence: date } : expense;
-      const entryId = EDITING_ID || await store.add(expenseToSave);
-      if (!EDITING_ID) createdEntryId = entryId;
+      const entryId = EDITING_ID || await store.add(expenseToSave, { reason });
+      if (EDITING_ID) await store.update(entryId, expenseToSave, { reason, expectedVersion: existingEntry?.financialVersion || 0 });
+      savedExpense = true;
       let hasReceipt = Boolean(existingEntry?.hasReceipt);
       if (pendingReceiptData) {
         await store.saveReceipt(entryId, pendingReceiptData);
@@ -2606,21 +2655,18 @@ function initApp() {
         await store.removeReceipt(entryId);
         hasReceipt = false;
       }
-      if (EDITING_ID || pendingReceiptData || removeExistingReceipt) {
-        await store.update(entryId, { ...expenseToSave, hasReceipt });
-      }
+      if (pendingReceiptData || removeExistingReceipt) await store.update(entryId, { hasReceipt });
       resetExpenseForm();
       document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       console.error(error);
-      if (createdEntryId) {
-        try {
-          await store.remove(createdEntryId);
-        } catch (cleanupError) {
-          console.error(cleanupError);
-        }
+      if (!savedExpense && createdRecurringId) {
+        try { await store.remove(createdRecurringId); } catch (cleanupError) { console.error(cleanupError); }
       }
-      showReceiptError(t("receiptUploadFailed"));
+      if (savedExpense) {
+        resetExpenseForm();
+        showReceiptError(t("receiptUploadFailed"));
+      } else showReceiptError(creditUI?.error(error) || t("receiptUploadFailed"));
     } finally {
       submitButton.disabled = false;
     }
@@ -2630,8 +2676,7 @@ function initApp() {
   document.getElementById("edit-delete").addEventListener("click", async () => {
     const entry = ENTRIES.find((item) => item.id === EDITING_ID);
     if (!EDITING_ID || !confirm(t("deleteEntry"))) return;
-    await store.remove(EDITING_ID);
-    resetExpenseForm();
+    try { await store.remove(EDITING_ID); resetExpenseForm(); } catch (error) { showReceiptError(creditUI.error(error)); }
   });
 
   document.getElementById("edit-modal").addEventListener("click", (event) => {
@@ -2943,6 +2988,9 @@ async function openBankbook(bankbook) {
   localStorage.setItem(`bankboken-active-${signedInUser.uid}`, bankbook.id);
   renderActiveGroupName(bankbook);
   ENTRIES = [];
+  CREDIT_INVOICES = [];
+  PENDING_PAIR_SETTLEMENT = null;
+  creditUI?.reset();
   RECURRING_TEMPLATES = [];
   HISTORY_FILTER = null;
   HISTORY_SEARCH = "";
@@ -2965,10 +3013,12 @@ async function openBankbook(bankbook) {
     RECURRING_TEMPLATES = isPairExperience()
       ? documents.filter((item) => item.kind === "recurringTemplate" && item.active !== false)
       : [];
-    ENTRIES = documents.filter((item) => item.kind !== "recurringTemplate");
+    CREDIT_INVOICES = documents.filter(item => item.kind === "creditInvoice");
+    ENTRIES = documents.filter((item) => !["recurringTemplate", "creditInvoice"].includes(item.kind));
     GROUP_DATA_LOADING = false;
     render();
     ensureRecurringEntries(RECURRING_TEMPLATES, new Set(documents.map((item) => item.id)));
+    creditUI?.ensureCurrent();
   }, () => {
     if (subscriptionToken !== entrySubscriptionToken || activeBankbook?.id !== bankbook.id) return;
     GROUP_DATA_LOADING = false;
@@ -3433,6 +3483,7 @@ function cancelAvatarSelection() {
 }
 
 function openSettings() {
+  creditUI?.settingsOpen();
   AVATAR_TARGET = "settings";
   const ownMemberId = currentMemberId();
   const groupProfile = activeBankbook.members?.[ownMemberId] || userProfile;
@@ -3619,6 +3670,7 @@ document.getElementById("settings-form").addEventListener("submit", async (event
   const name = document.getElementById("settings-name").value.trim();
   if (!name || !activeBankbook) return;
   try {
+    await creditUI.saveSettings();
     const avatarMode = SETTINGS_AVATAR_MODE === "emoji" && SETTINGS_AVATAR_EMOJI ? "emoji" : "letter";
     const avatarEmoji = avatarMode === "emoji" ? firstGrapheme(SETTINGS_AVATAR_EMOJI) : "";
     const ownMemberId = currentMemberId();
@@ -3718,5 +3770,14 @@ async function initializeFirebase() {
   });
 }
 
+creditUI = createCreditUI({
+  book: () => activeBankbook, entries: () => ENTRIES, invoices: () => CREDIT_INVOICES,
+  profiles: () => activeGroupProfiles(), isPair: () => isPairExperience(), slot: () => CURRENT_USER,
+  store: () => store, t, kr, escape: escapeHtml, language: () => LANGUAGE,
+  payer: () => getPayer?.(), entryType: () => getEntryType?.(), today: todayInputValue,
+  excludedAmount: receiptItemsExcludedAmount, editingEntry: () => EDITING_ENTRY,
+  edit: startEditing, preview: updatePreview, dirty: updateEditingDirtyState,
+  syncError: () => setSync(false, t("syncFailed")),
+});
 applyLanguage();
 initializeFirebase().catch((error) => showError("auth-error", error));

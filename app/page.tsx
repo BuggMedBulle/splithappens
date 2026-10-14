@@ -3,8 +3,8 @@ export default function Home() {
     <main className="imported-app-shell">
       <iframe
         className="imported-app-frame"
-        src="/bankboken/index.html"
-        title="Bankboken"
+        src="/bankboken-multi/index.html"
+        title="Split Happens"
         allow="clipboard-write"
       />
     </main>

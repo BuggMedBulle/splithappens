@@ -12,7 +12,7 @@ medlemmar får dynamisk kostnadsdelning och förslag på effektiva Swish-betalni
 Kör `npm test` från repositoryts rot för ekonomiberäkningar och statiska appkontroller.
 Kör `npm run build` separat för webbplatsens byggkontroll.
 
-Kreditkortsstödets första session har en testad beräkningsgrund, men ingen aktiverad
-kreditkortsfunktion. Se `docs/credit-card-foundation.md` för datamodell, räkneregler,
-begränsningar och nästa sessioner. Vid publicering ska den nya modulen `finance.js`
-alltid följa med `app.js`.
+Gemensamt kreditkort är ett frivilligt tillval för par. Se `docs/shared-credit-card.md`
+för användning, lagring, korrigeringar och verifieringsgränser. Kör
+`npm run test:browser` för hela användarflödet med simulerad Firebase-data.
+Vid publicering ska samtliga JavaScript-moduler i denna mapp följa med.

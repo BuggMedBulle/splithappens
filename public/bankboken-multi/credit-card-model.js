@@ -95,9 +95,8 @@ export function summarizeInvoice(invoice, purchases) {
     if (!purchase.id || seenIds.has(purchase.id)) throw new TypeError("Purchase IDs must be unique");
     seenIds.add(purchase.id);
     if (![invoice.memberAId, invoice.memberBId].includes(purchase.cardMemberId)) throw new TypeError("Unknown physical card holder");
-    if (Number(purchase.excludedAmount || 0) !== 0) throw new TypeError("Invoice purchases require full cost allocation");
     const cents = toCents(purchase.amount);
-    const shares = allocateCents(cents, purchaseRatio(purchase));
+    const shares = invoiceCostShares(purchase, invoice);
     summary.purchasesCents = integerCents(summary.purchasesCents + cents);
     summary.sharesCents.a = integerCents(summary.sharesCents.a + shares.a);
     summary.sharesCents.b = integerCents(summary.sharesCents.b + shares.b);
@@ -124,4 +123,128 @@ export function previewInvoiceContribution(invoice, purchases) {
 
 export function netPairBalanceCents(privateBalance, contributionsCents = []) {
   return contributionsCents.reduce((sum, amount) => integerCents(sum + integerCents(amount)), toCents(privateBalance));
+}
+
+function validDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("invalidDate");
+  const date = new Date(`${value}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error("invalidDate");
+  return date;
+}
+
+export function periodForMonth(month, cutoffDay) {
+  if (!/^\d{4}-\d{2}$/.test(month) || !Number.isInteger(cutoffDay) || cutoffDay < 1 || cutoffDay > 31) throw new Error("configureCutoff");
+  const [year, m] = month.split("-").map(Number);
+  if (m < 1 || m > 12 || year < 1900 || year > 9998) throw new Error("invalidDate");
+  const cutoff = offset => {
+    const last = new Date(Date.UTC(year, m - 1 + offset + 1, 0, 12));
+    return new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), Math.min(cutoffDay, last.getUTCDate()), 12));
+  };
+  const previous = cutoff(-1);
+  previous.setUTCDate(previous.getUTCDate() + 1);
+  return { month, start: previous.toISOString().slice(0, 10), end: cutoff(0).toISOString().slice(0, 10) };
+}
+
+export function periodForPurchase(dateValue, cutoffDay) {
+  const date = validDate(dateValue);
+  let month = dateValue.slice(0, 7);
+  const period = periodForMonth(month, cutoffDay);
+  if (dateValue > period.end) {
+    date.setUTCMonth(date.getUTCMonth() + 1, 1);
+    month = date.toISOString().slice(0, 7);
+  }
+  return periodForMonth(month, cutoffDay);
+}
+
+export const invoiceIdForMonth = month => `credit-invoice-${month}`;
+
+export function makeInvoice(month, settings, memberAId, memberBId, now) {
+  const period = periodForMonth(month, settings.cutoffDay);
+  return {
+    id: invoiceIdForMonth(month), kind: "creditInvoice", type: "creditInvoice", accountId: "shared",
+    memberAId, memberBId, primaryCardMemberId: settings.primaryCardMemberId, extraCardMemberId: settings.extraCardMemberId, month, periodStart: period.start, periodEnd: period.end,
+    ts: Date.parse(`${period.end}T12:00:00Z`), status: "ongoing", revision: 0,
+    feeCents: settings.feeCents, feeShareA: settings.feeShareA,
+    invoicePayerMemberId: settings.invoicePayerMemberId, actualTotalCents: null, dueDate: "",
+    purchases: {}, transfers: {}, audit: {}, bankPaidAt: null, transferredAt: null, createdAt: now,
+  };
+}
+
+export function postedInvoiceCents(invoice) {
+  return Object.values(invoice.transfers || {}).reduce((sum, transfer) => integerCents(sum + integerCents(transfer.cents)), 0);
+}
+
+export function invoiceCostShares(purchase, invoice) {
+  const amountCents = toCents(purchase.amount);
+  const excluded = toCents(Number(purchase.excludedAmount || 0));
+  if (excluded < 0 || excluded > Math.abs(amountCents)) throw new Error("invalidAllocation");
+  const signedExcluded = Math.sign(amountCents) * excluded;
+  const shares = allocateCents(amountCents - signedExcluded, purchaseRatio(purchase));
+  if (excluded) {
+    if (purchase.excludedCostMemberId === invoice.memberAId) shares.a += signedExcluded;
+    else if (purchase.excludedCostMemberId === invoice.memberBId) shares.b += signedExcluded;
+    else throw new Error("assignExcludedCosts");
+  }
+  return shares;
+}
+
+export function pairCreditBalance(entries, invoices, privateBalanceOf) {
+  return netPairBalanceCents(privateBalanceOf(entries.filter(e => e.paymentSource !== "creditCard")), invoices.map(postedInvoiceCents)) / 100;
+}
+
+export function invoiceFeeEntries(invoices) {
+  return invoices.map(invoice => ({
+    id: `fee-${invoice.id}`, type: "expense", desc: "creditFee", icon: "💳", ts: invoice.ts,
+    amount: invoice.feeCents / 100, split: "custom", shareA: invoice.feeShareA,
+    paymentSource: "creditFee", invoiceId: invoice.id, memberAId: invoice.memberAId, memberBId: invoice.memberBId,
+  }));
+}
+
+// Immutable ledger entries keep already-paid debt unchanged when an invoice is edited.
+export function transitionInvoice(invoice, action, payload, expectedRevision, userId, now) {
+  if (invoice.revision !== expectedRevision) throw new Error("staleInvoice");
+  const next = structuredClone(invoice);
+  const posted = Object.keys(next.transfers || {}).length > 0;
+  if (action === "bankPaid") {
+    if (next.bankPaidAt != null) return next;
+    next.bankPaidAt = now;
+    next.bankPaidBy = userId;
+    next.audit[`bank-${now}`] = { at: now, by: userId, action };
+    return next;
+  }
+  if (action === "transfer" && next.transfers?.[`r${next.revision}`]) return next;
+  if (action === "edit") {
+    if (posted && !payload.reason?.trim()) throw new Error("correctionReasonRequired");
+    for (const key of ["feeCents", "feeShareA", "actualTotalCents", "dueDate", "periodStart", "periodEnd", "invoicePayerMemberId"]) {
+      if (Object.hasOwn(payload, key)) next[key] = payload[key];
+    }
+    validDate(next.periodStart); validDate(next.periodEnd);
+    if (next.periodStart > next.periodEnd) throw new Error("invalidDate");
+    if (next.dueDate) validDate(next.dueDate);
+    if (![next.memberAId, next.memberBId].includes(next.invoicePayerMemberId)) throw new Error("invalidPayer");
+    summarizeInvoice(next, Object.values(next.purchases));
+    next.ts = Date.parse(`${next.periodEnd}T12:00:00Z`);
+    next.revision += 1;
+    next.status = next.actualTotalCents == null ? "ongoing" : "received";
+  } else if (action === "reconcile") {
+    if (next.status === "transferred") return next;
+    if (summarizeInvoice(next, Object.values(next.purchases)).differenceCents !== 0) throw new Error("invoiceMismatch");
+    next.status = "reconciled";
+  } else if (action === "transfer") {
+    if (next.status !== "reconciled") throw new Error("reconcileFirst");
+    const desired = previewInvoiceContribution({ ...next, transferredAt: null }, Object.values(next.purchases));
+    const cents = desired - postedInvoiceCents(next);
+    if (posted && !payload.reason?.trim()) throw new Error("correctionReasonRequired");
+    next.transfers[`r${next.revision}`] = { cents, targetCents: desired, totalCents: summarizeInvoice(next, Object.values(next.purchases)).totalCents, sharesCents: summarizeInvoice(next, Object.values(next.purchases)).sharesCents, at: now, by: userId, reason: payload.reason || "", payerMemberId: next.invoicePayerMemberId };
+    next.transferredAt = now;
+    next.status = "transferred";
+  } else throw new Error("invalidAction");
+  next.audit[`${action}-${next.revision}-${now}`] = {
+    at: now, by: userId, action, reason: payload.reason || "",
+    ...(action === "edit" ? {
+      before: Object.fromEntries(["feeCents", "feeShareA", "actualTotalCents", "invoicePayerMemberId", "periodStart", "periodEnd", "dueDate"].map(key => [key, invoice[key] ?? null])),
+      after: Object.fromEntries(["feeCents", "feeShareA", "actualTotalCents", "invoicePayerMemberId", "periodStart", "periodEnd", "dueDate"].map(key => [key, next[key] ?? null])),
+    } : {}),
+  };
+  return next;
 }

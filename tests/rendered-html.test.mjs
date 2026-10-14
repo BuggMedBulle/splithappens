@@ -17,7 +17,9 @@ test("app module and every relative static import exist and parse", async () => 
   }
   await visit(new URL("app.js", base));
   assert.ok(visited.has(new URL("finance.js", base).href));
-  assert.ok(!visited.has(new URL("credit-card-model.js", base).href), "Foundation must not enable unfinished credit card features");
+  assert.ok(visited.has(new URL("credit-card-model.js", base).href));
+  assert.ok(visited.has(new URL("credit-card-store.js", base).href));
+  assert.ok(visited.has(new URL("credit-card-ui.js", base).href));
 });
 
 test("existing group page has all literal DOM IDs referenced by the app", async () => {
