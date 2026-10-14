@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   allocateCents, createCreditCardSettings, summarizeInvoice,
-  previewInvoiceContribution, netPairBalanceCents, toCents,
+  previewInvoiceContribution, netPairBalanceCents, toCents, pendingCreditBalance, pairCreditBalance, periodForPurchase,
 } from "../public/bankboken-multi/credit-card-model.js";
 import { balanceOf } from "../public/bankboken-multi/finance.js";
 
@@ -126,4 +126,33 @@ test("refund-only and fee-only invoices conserve their totals", () => {
   assert.equal(previewInvoiceContribution(refundInvoice, [purchase("return", -100, "bob", "b")]), -10000);
   const feeInvoice = { ...baseInvoice, actualTotalCents: 57500 };
   assert.deepEqual(summarizeInvoice(feeInvoice, []).sharesCents, { a: 28750, b: 28750 });
+});
+
+
+test("upcoming debt moves into payable once and subsequent refunds show only their correction", () => {
+  const invoice = { ...baseInvoice, purchases: Object.fromEntries(purchases.map(p => [p.id, p])) };
+  const privateEntries = [{ type: "expense", payer: "B", amount: 1200, split: "a" }];
+  const before = pairCreditBalance(privateEntries, [invoice], balanceOf);
+  assert.equal(before, -1200);
+  assert.equal(pendingCreditBalance([invoice]), 4287.5);
+  invoice.transfers = { r0: { cents: 428750 } };
+  assert.equal(pendingCreditBalance([invoice]), 0);
+  assert.equal(pairCreditBalance(privateEntries, [invoice], balanceOf), before + 4287.5);
+  invoice.purchases.refund = purchase("refund", -200, "bob", "even");
+  assert.equal(pendingCreditBalance([invoice]), -100);
+  invoice.transfers.r1 = { cents: -10000 };
+  assert.equal(pendingCreditBalance([invoice]), 0);
+});
+
+test("upcoming responsibility follows invoice payer, including fee-only invoices", () => {
+  const invoice = { ...baseInvoice, purchases: {}, actualTotalCents: null };
+  assert.equal(pendingCreditBalance([invoice]), 287.5);
+  invoice.invoicePayerMemberId = "bob";
+  assert.equal(pendingCreditBalance([invoice]), -287.5);
+  assert.equal(pendingCreditBalance([]), 0);
+});
+
+test("cutoff 3 places October 14 in the October 4–November 3 period", () => {
+  assert.deepEqual(periodForPurchase("2026-10-14", 3), { month: "2026-11", start: "2026-10-04", end: "2026-11-03" });
+  assert.equal(periodForPurchase("2026-10-03", 3).month, "2026-10");
 });

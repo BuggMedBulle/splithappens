@@ -131,6 +131,10 @@ export function createCreditUI(ctx) {
     $("credit-period-start").value = i.periodStart;
     $("credit-period-end").value = i.periodEnd;
   }
+  function periodLabel(i) {
+    const format = value => new Date(`${value}T12:00:00`).toLocaleDateString(ctx.language() === "en" ? "en-GB" : "sv-SE", { day: "numeric", month: "short" });
+    return `${i.month} (${format(i.periodStart)}–${format(i.periodEnd)})`;
+  }
   function render() {
     $("credit-summary").hidden = !eligible() || (!active() && !ctx.invoices().length);
     $("credit-trigger").hidden = $("credit-summary").hidden;
@@ -140,12 +144,12 @@ export function createCreditUI(ctx) {
     if (upcoming) {
       const total = summarizeInvoice(upcoming, Object.values(upcoming.purchases));
       const ownShare = ctx.slot() === "A" ? total.sharesCents.a : total.sharesCents.b;
-      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${upcoming.month} · ${ctx.kr(total.totalCents / 100)} · ${ctx.t("creditYourShare")}: ${ctx.kr(ownShare / 100)}`;
+      $("credit-summary-copy").textContent = `${ctx.book().creditCard?.name || ctx.t("creditTitle")} · ${periodLabel(upcoming)} · ${ctx.kr(total.totalCents / 100)} · ${ctx.t("creditYourShare")}: ${ctx.kr(ownShare / 100)}`;
       $("credit-summary-note").textContent = ctx.t(upcoming.status === "transferred" ? "creditTransferred" : Object.keys(upcoming.transfers || {}).length ? "creditPendingCorrection" : "creditPreliminary");
     } else $("credit-summary-copy").textContent = ctx.t("creditNoInvoices");
     if ($("credit-modal").hidden) return;
     if (!all.some(i => i.id === selectedId)) { selectedId = all[0]?.id || ""; dirtyInvoice = false; }
-    $("credit-invoice-select").innerHTML = all.map(i => option(i.id, i.month)).join("");
+    $("credit-invoice-select").innerHTML = all.map(i => option(i.id, periodLabel(i))).join("");
     $("credit-invoice-select").value = selectedId;
     $("credit-new-period").hidden = !active();
     const i = invoice();

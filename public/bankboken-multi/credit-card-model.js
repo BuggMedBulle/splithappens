@@ -188,6 +188,18 @@ export function invoiceCostShares(purchase, invoice) {
   return shares;
 }
 
+// Only the unposted difference is upcoming; posted amounts already belong to Swish.
+export function pendingCreditBalance(invoices) {
+  return invoices.reduce((sum, invoice) => {
+    const shares = summarizeInvoice(invoice, Object.values(invoice.purchases || {})).sharesCents;
+    let target;
+    if (invoice.invoicePayerMemberId === invoice.memberAId) target = shares.b;
+    else if (invoice.invoicePayerMemberId === invoice.memberBId) target = -shares.a;
+    else throw new TypeError("Invoice payer must be a pair member");
+    return integerCents(sum + target - postedInvoiceCents(invoice));
+  }, 0) / 100;
+}
+
 export function pairCreditBalance(entries, invoices, privateBalanceOf) {
   return netPairBalanceCents(privateBalanceOf(entries.filter(e => e.paymentSource !== "creditCard")), invoices.map(postedInvoiceCents)) / 100;
 }
