@@ -63,6 +63,12 @@ try {
   }
   // Only the private debt is currently payable.
   assert.match(await page.locator("#balance-heading").innerText(), /1\s?200/);
+  assert.equal(await page.locator("#balance-label").textContent(), "Att reglera nu");
+  assert.match(await page.locator("#credit-pending-amount").innerText(), /[−-]4\s?287,50/);
+  assert.match(await page.locator("#credit-summary-copy").innerText(), /21 sep.*20 okt/);
+  await mkdir(new URL("../work/", import.meta.url), { recursive: true });
+  await page.locator("#saldo-card").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: new URL("../work/credit-balance-preview.png", import.meta.url).pathname, fullPage: false });
   await page.locator("#credit-open").click();
   await page.locator("#credit-invoice-select").selectOption("credit-invoice-2026-10");
   assert.match(await page.locator("#credit-invoice-totals").innerText(), /8\s?375/);
@@ -83,6 +89,7 @@ try {
   await page.screenshot({ path: new URL("../work/credit-mobile.png", import.meta.url).pathname, fullPage: false });
   await page.locator("#credit-close").click();
   assert.match(await page.locator("#settle-btn").innerText(), /3\s?087,50/);
+  assert.match(await page.locator("#credit-pending-amount").innerText(), /^0,00/);
   // Do not open a bank app in a test. Exercise the existing confirmation flow.
   await page.evaluate(() => { window.open = () => null; });
   await page.locator("#settle-btn").click();

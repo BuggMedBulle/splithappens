@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=subscription-category-20261014" />
+  <link rel="stylesheet" href="styles.css?v=credit-preview-20261014" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -70,7 +70,7 @@
     <main class="stack">
       <!-- Saldo -->
       <section class="card" id="saldo-card">
-        <p class="eyebrow" data-i18n="balance">Saldo</p>
+        <p id="balance-label" class="eyebrow" data-i18n="balance">Saldo</p>
         <h1 id="balance-heading">Läser in…</h1>
         <div class="balance-sub-row">
           <p class="sub" id="balance-sub"></p>
@@ -78,6 +78,11 @@
             <span data-i18n="showAll">Visa alla</span>
             <img src="chevron-down.svg" alt="" />
           </button>
+        </div>
+        <div id="credit-pending-balance" class="credit-pending-balance" hidden>
+          <div class="credit-total"><span data-i18n="creditPendingBalance">Kommande från kreditkort</span><strong id="credit-pending-amount"></strong></div>
+          <p id="credit-pending-direction" class="field-help"></p>
+          <p class="field-help" data-i18n="creditPendingHelp">Inklusive kortavgift. Flyttas till avräkningen när fakturan förs över.</p>
         </div>
         <div id="swish-suggestions" class="swish-suggestions" hidden></div>
 
@@ -565,6 +570,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=subscription-category-20261014"></script>
+  <script type="module" src="app.js?v=credit-preview-20261014"></script>
 </body>
 </html>

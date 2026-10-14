@@ -1,7 +1,7 @@
 import { createCreditStore } from "./credit-card-store.js?v=subscription-category-20261014";
-import { createCreditUI } from "./credit-card-ui.js";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js";
-import { pairCreditBalance, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js";
+import { createCreditUI } from "./credit-card-ui.js?v=credit-preview-20261014";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-preview-20261014";
+import { pairCreditBalance, pendingCreditBalance, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-preview-20261014";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -983,6 +983,21 @@ function setBalanceHeading(heading, amount) {
 }
 
 function renderBalance() {
+  const hasCredit = !usesGroupExperience() && (activeBankbook?.creditCard?.enabled || CREDIT_INVOICES.length > 0);
+  const label = document.getElementById("balance-label");
+  label.dataset.i18n = hasCredit ? "creditPayableNow" : "balance";
+  label.textContent = t(label.dataset.i18n);
+  document.getElementById("credit-pending-balance").hidden = !hasCredit;
+  if (hasCredit) {
+    const pending = pendingCreditBalance(CREDIT_INVOICES);
+    const ownPending = CURRENT_USER === "A" ? pending : -pending;
+    document.getElementById("credit-pending-amount").textContent = kr(ownPending || 0);
+    const debtor = pending > 0 ? "B" : "A";
+    const creditor = pending > 0 ? "A" : "B";
+    document.getElementById("credit-pending-direction").textContent = Math.abs(pending) < 0.005
+      ? t("creditNoPending")
+      : `${subjectName(debtor)} ${t(debtor === CURRENT_USER ? "oweSelf" : "owesOther")} ${objectName(creditor)}`;
+  }
   if (usesGroupExperience()) {
     renderGroupBalance();
     return;
