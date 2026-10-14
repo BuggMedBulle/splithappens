@@ -1,4 +1,4 @@
-import { createCreditStore } from "./credit-card-store.js";
+import { createCreditStore } from "./credit-card-store.js?v=subscription-category-20261014";
 import { createCreditUI } from "./credit-card-ui.js";
 import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js";
 import { pairCreditBalance, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js";

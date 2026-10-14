@@ -201,5 +201,7 @@ test("subscription category changes apply to future private and card expenses, i
     await f.store.saveEntry("subscription", {}, { remove: true });
     assert.equal(await f.other.saveEntry("after-stop", fields, { createOnly: true }), null);
     assert.equal(f.memory.read(prefix + "after-stop"), undefined);
+    await f.other.saveEntry("subscription", { generatedThrough: "2026-11-10" });
+    assert.equal(f.memory.read(prefix + "subscription"), undefined);
   }
 });

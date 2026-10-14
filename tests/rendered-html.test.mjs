@@ -8,8 +8,10 @@ const base = new URL("../public/bankboken-multi/", import.meta.url);
 test("app module and every relative static import exist and parse", async () => {
   const visited = new Set();
   async function visit(url) {
-    if (visited.has(url.href)) return;
-    visited.add(url.href);
+    const identity = new URL(url);
+    identity.search = "";
+    if (visited.has(identity.href)) return;
+    visited.add(identity.href);
     const source = await readFile(url, "utf8");
     const parsed = spawnSync(process.execPath, ["--check", url.pathname], { encoding: "utf8" });
     assert.equal(parsed.status, 0, parsed.stderr);

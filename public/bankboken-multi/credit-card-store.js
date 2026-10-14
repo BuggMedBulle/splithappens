@@ -22,6 +22,7 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
       const book = await read(tx, bookRef);
       const old = await read(tx, ref(id));
       if (createOnly && old) return id;
+      if (Object.hasOwn(patch, "generatedThrough") && old?.kind !== "recurringTemplate") return null;
       if (old?.kind === "creditInvoice") throw new Error("invoiceProtected");
       if (expectedVersion != null && (old?.financialVersion || 0) !== expectedVersion) throw new Error("staleInvoice");
       const next = remove ? null : { ...old, ...patch, id, updatedBy: userId, financialVersion: (old?.financialVersion || 0) + 1 };
