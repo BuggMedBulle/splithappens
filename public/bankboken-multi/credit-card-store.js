@@ -31,7 +31,8 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
       const hasCard = financialChanged && old?.kind !== "recurringTemplate" && next?.kind !== "recurringTemplate" && (old?.paymentSource === "creditCard" || next?.paymentSource === "creditCard");
       if (next?.recurringId && createOnly) {
         const template = await read(tx, ref(next.recurringId));
-        if (template?.active === false) return null;
+        if (!template || template.active === false) return null;
+        next.icon = template.icon || next.icon || "🧾";
       }
       const writes = new Map();
       if (hasCard) {

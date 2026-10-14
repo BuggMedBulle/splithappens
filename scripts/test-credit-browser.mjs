@@ -157,6 +157,26 @@ try {
   const nextInvoice = await page.evaluate(() => window.__testDatabase()["bankbooks/pair/entries/credit-invoice-2026-11"]);
   assert.equal(Object.keys(nextInvoice.purchases).length, 2);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.locator("#settings-trigger").click();
+  await page.locator("[data-recurring-category]").selectOption("📺");
+  await page.waitForFunction(() => Object.values(window.__testDatabase()).some(e => e.kind === "recurringTemplate" && e.icon === "📺"));
+  assert.equal(await page.locator("[data-recurring-category]").inputValue(), "📺");
+  await page.locator("#settings-close").click();
+  await page.clock.setFixedTime(new Date("2026-11-22T12:00:00Z"));
+  await page.reload();
+  await page.locator('[data-bankbook-id="pair"]').click();
+  await page.waitForFunction(() => Object.values(window.__testDatabase()).some(e => e.recurringOccurrence === "2026-11-21"));
+  const generated = await page.evaluate(() => Object.values(window.__testDatabase()).find(e => e.recurringOccurrence === "2026-11-21"));
+  assert.equal(generated.icon, "📺");
+  assert.equal(generated.amount, 25);
+  const initial = await page.evaluate(() => Object.values(window.__testDatabase()).find(e => e.recurringOccurrence === "2026-10-21"));
+  assert.equal(initial.icon, "🧾");
+  await page.locator("#settings-trigger").click();
+  assert.equal(await page.locator("[data-recurring-category]").inputValue(), "📺");
+  await page.locator('[data-language="sv"]').click();
+  assert.match(await page.locator("[data-recurring-category] option:checked").innerText(), /Media/);
+  await page.locator("#recurring-settings").screenshot({ path: new URL("../work/subscription-categories.png", import.meta.url).pathname });
+  await page.locator("#settings-close").click();
   await page.locator("#switch-group").click();
   await page.locator("#create-group").click();
   await page.locator('[data-group-type="group"]').click();
@@ -177,5 +197,5 @@ try {
   assert.equal(await page.locator("#credit-settings").isVisible(), false);
   await page.locator("#settings-close").click();
   assert.deepEqual(errors, []);
-  console.log("Browser acceptance passed: optional settings, 5 purchases, mismatch guard, reconciliation, net Swish 3087.50, reload, bank payment, statistics, English/dark mobile view, traced post-Swish refund, manual assignment, recurring card purchase and ordinary three-person group regression.");
+  console.log("Browser acceptance passed: optional settings, 5 purchases, mismatch guard, reconciliation, net Swish 3087.50, reload, bank payment, statistics, English/dark mobile view, traced post-Swish refund, manual assignment, recurring card purchase, category persistence/future generation and ordinary three-person group regression.");
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

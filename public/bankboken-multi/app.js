@@ -108,6 +108,7 @@ const TRANSLATIONS = {
     removeReceiptItems: "Ta bort kvittodelningen",
     recurringMonthly: "Återkommande varje månad", recurringMonthlyHelp: "Skapas automatiskt samma dag varje månad.",
     recurringPayments: "Stående betalningar", noRecurringPayments: "Inga stående betalningar.", recurringDay: "dag {day} varje månad",
+    recurringCategoryHelp: "Kategorivalet sparas direkt och gäller framtida utgifter. Tidigare poster behåller sin kategori.",
     stopRecurring: "Avsluta", stopRecurringConfirm: "Avsluta den stående betalningen? Redan skapade utgifter behålls.",
     missingGroupProfiles: "Gruppen saknar den profilinformation som krävs för att öppnas.", inviteNotFound: "Inbjudningskoden finns inte.",
     pairFull: "Den här gruppen har redan två personer.", groupAtCapacity: "Den här gruppen har redan tio personer.",
@@ -178,6 +179,7 @@ const TRANSLATIONS = {
     removeReceiptItems: "Remove receipt split",
     recurringMonthly: "Recurring every month", recurringMonthlyHelp: "Created automatically on the same day each month.",
     recurringPayments: "Recurring payments", noRecurringPayments: "No recurring payments.", recurringDay: "day {day} every month",
+    recurringCategoryHelp: "Category changes are saved immediately and apply to future expenses. Earlier entries keep their category.",
     stopRecurring: "Stop", stopRecurringConfirm: "Stop this recurring payment? Expenses already created will be kept.",
     missingGroupProfiles: "The group does not have the profile information required to open it.", inviteNotFound: "The invitation code does not exist.",
     pairFull: "This couple already has two people.", groupAtCapacity: "This group already has ten people.",
@@ -832,7 +834,12 @@ function renderRecurringSettings() {
     const item = document.createElement("div");
     item.className = "recurring-settings-item";
     const day = template.dayOfMonth || Number(template.startDate?.split("-")[2]) || 1;
-    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${escapeHtml(t("recurringDay", { day }))}</small></span><button class="recurring-stop" type="button" data-recurring-stop="${template.id}">${escapeHtml(t("stopRecurring"))}</button>`;
+    const currentIcon = STATISTICS_CATEGORY_ALIASES[template.icon] || template.icon || ICON_DEFAULT;
+    const categoryOptions = Object.entries(STATISTICS_CATEGORY_KEYS)
+      .filter(([icon]) => icon !== "💳")
+      .map(([icon, key]) => `<option value="${icon}" ${icon === currentIcon || (icon === ICON_DEFAULT && !STATISTICS_CATEGORY_KEYS[currentIcon]) ? "selected" : ""}>${icon} ${escapeHtml(t(key))}</option>`).join("");
+    item.innerHTML = `<span><strong>${escapeHtml(template.desc)}</strong><small>${kr(template.amount)} · ${escapeHtml(t("recurringDay", { day }))}</small></span><button class="recurring-stop" type="button" data-recurring-stop="${escapeHtml(template.id)}">${escapeHtml(t("stopRecurring"))}</button>
+      <label class="recurring-category"><span class="field-label">${escapeHtml(t("chooseCategory"))}</span><select data-recurring-category="${escapeHtml(template.id)}">${categoryOptions}</select></label>`;
     list.appendChild(item);
   });
 }
@@ -3643,6 +3650,18 @@ document.getElementById("settings-theme").addEventListener("click", (event) => {
   THEME = button.dataset.theme;
   localStorage.setItem("split-happens-theme", THEME);
   applyTheme();
+});
+
+document.getElementById("recurring-settings-list").addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-recurring-category]");
+  if (!select || !STATISTICS_CATEGORY_KEYS[select.value] || select.value === "💳") return;
+  select.disabled = true;
+  document.getElementById("settings-error").hidden = true;
+  try { await store.update(select.dataset.recurringCategory, { icon: select.value }); }
+  catch (error) {
+    renderRecurringSettings();
+    showError("settings-error", error);
+  } finally { select.disabled = false; }
 });
 
 document.getElementById("recurring-settings-list").addEventListener("click", async (event) => {
