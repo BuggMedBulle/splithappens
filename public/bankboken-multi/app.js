@@ -1,7 +1,7 @@
-import { createCreditStore } from "./credit-card-store.js?v=subscription-category-20261014";
-import { createCreditUI } from "./credit-card-ui.js?v=invoice-name-20261014";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=invoice-name-20261014";
-import { pairCreditBalance, pendingCreditBalance, invoiceDisplayMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=invoice-name-20261014";
+import { createCreditStore } from "./credit-card-store.js?v=simple-credit-20261014";
+import { createCreditUI } from "./credit-card-ui.js?v=simple-credit-20261014";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=simple-credit-20261014";
+import { pairCreditBalance, pendingCreditBalance, invoiceDisplayMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=simple-credit-20261014";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
