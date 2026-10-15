@@ -246,6 +246,7 @@ export function createCreditUI(ctx) {
     const entry = ctx.entries().find(p => p.id === id);
     if (entry) { $("credit-modal").hidden = true; ctx.edit(entry); }
   });
+  for (const event of ["input", "change"]) $("e-date").addEventListener(event, () => { controls(); ctx.dirty(); });
   for (const id of ["credit-use", "credit-excluded-owner"]) $(id).addEventListener("change", () => { controls(); ctx.preview(); ctx.dirty(); });
   return { settingsOpen, saveSettings, controls, purchaseFields, cardSelected, correctionReason, reset, render, ensureCurrent, error };
 }
