@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=invoice-format-20261014" />
+  <link rel="stylesheet" href="styles.css?v=credit-start-20261015" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -490,6 +490,7 @@
 <label class="field"><span class="field-label" data-i18n="creditExtra"></span><select id="credit-extra"></select></label>
 <label class="field"><span class="field-label" data-i18n="creditFee"></span><input id="credit-fee" type="number" step="0.01" min="0" /></label>
 <label class="field"><span class="field-label" data-i18n="creditCutoff"></span><input id="credit-cutoff" type="number" min="1" max="31" step="1" /></label>
+<details><summary data-i18n="creditStartSetup">Start för kreditkortet</summary><label class="field"><span class="field-label" data-i18n="creditFirstStart">Första fakturaperiodens start</span><input id="credit-first-start" type="date" /></label><p class="field-help" data-i18n="creditFirstHelp"></p></details>
 <p class="field-help" data-i18n="creditDefaultsHelp"></p></div></section>
         <section id="recurring-settings" class="recurring-settings" hidden>
           <h3 data-i18n="recurringPayments">Stående betalningar</h3>
@@ -567,6 +568,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=invoice-format-20261014"></script>
+  <script type="module" src="app.js?v=credit-start-20261015"></script>
 </body>
 </html>

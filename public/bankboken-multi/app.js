@@ -1,7 +1,7 @@
-import { createCreditStore } from "./credit-card-store.js?v=invoice-format-20261014";
-import { createCreditUI } from "./credit-card-ui.js?v=invoice-format-20261014";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=invoice-format-20261014";
-import { pairCreditBalance, pendingCreditBalance, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=invoice-format-20261014";
+import { createCreditStore } from "./credit-card-store.js?v=credit-start-20261015";
+import { createCreditUI } from "./credit-card-ui.js?v=credit-start-20261015";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-start-20261015";
+import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-start-20261015";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -507,7 +507,7 @@ let ENTRIES = [];
 let CREDIT_INVOICES = [];
 let creditUI;
 let PENDING_PAIR_SETTLEMENT = null;
-function currentPairBalance() { return pairCreditBalance(ENTRIES, CREDIT_INVOICES, balanceOf); }
+function currentPairBalance() { return pairCreditBalance(ENTRIES, visibleCreditInvoices(CREDIT_INVOICES, activeBankbook?.creditCard), balanceOf); }
 let RECURRING_TEMPLATES = [];
 let GENERATING_RECURRING = false;
 let CURRENT_USER = localStorage.getItem("bankboken-person");
@@ -632,7 +632,7 @@ function renderStatistics() {
   if (!modal || modal.hidden || !activeBankbook) return;
   const profiles = displayGroupProfiles();
   const range = statisticsRange();
-  const statisticsEntries = [...ENTRIES, ...invoiceFeeEntries(CREDIT_INVOICES)].filter((entry) => {
+  const statisticsEntries = [...ENTRIES, ...invoiceFeeEntries(visibleCreditInvoices(CREDIT_INVOICES, activeBankbook?.creditCard))].filter((entry) => {
     if (!["expense", "income"].includes(entry.type)) return false;
     const timestamp = entry.ts?.toMillis?.() ?? Number(entry.ts);
     if (!Number.isFinite(timestamp)) return false;
@@ -989,7 +989,7 @@ function renderBalance() {
   label.textContent = t(label.dataset.i18n);
   document.getElementById("credit-pending-balance").hidden = !hasCredit;
   if (hasCredit) {
-    const pending = pendingCreditBalance(CREDIT_INVOICES);
+    const pending = pendingCreditBalance(visibleCreditInvoices(CREDIT_INVOICES, activeBankbook?.creditCard));
     const ownPending = CURRENT_USER === "A" ? pending : -pending;
     document.getElementById("credit-pending-amount").textContent = kr(ownPending || 0);
     const debtor = pending > 0 ? "B" : "A";
@@ -3806,7 +3806,7 @@ async function initializeFirebase() {
 }
 
 creditUI = createCreditUI({
-  book: () => activeBankbook, entries: () => ENTRIES, invoices: () => CREDIT_INVOICES,
+  book: () => activeBankbook, entries: () => ENTRIES, invoices: () => visibleCreditInvoices(CREDIT_INVOICES, activeBankbook?.creditCard),
   profiles: () => activeGroupProfiles(), isPair: () => isPairExperience(), slot: () => CURRENT_USER,
   store: () => store, t, kr, escape: escapeHtml, language: () => LANGUAGE,
   payer: () => getPayer?.(), entryType: () => getEntryType?.(), today: todayInputValue,

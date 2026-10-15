@@ -69,6 +69,7 @@ export function createCreditCardSettings(memberAId, memberBId, overrides = {}) {
   if (typeof settings.enabled !== "boolean" || typeof settings.name !== "string" || !settings.name.trim()) {
     throw new TypeError("Invalid credit card settings");
   }
+  if (settings.firstPeriodMonth) periodForMonth(settings.firstPeriodMonth, settings.cutoffDay);
   return settings;
 }
 
@@ -278,4 +279,12 @@ export function invoiceDisplayMonth(invoice) {
 export function formatInvoiceMonth(month, language = "sv") {
   const label = new Date(`${month}-01T12:00:00`).toLocaleDateString(language === "en" ? "en-GB" : "sv-SE", { month: "short", year: "numeric" }).replace(/\./g, "");
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+// Empty setup invoices before the account's chosen start are kept for recovery,
+// but excluded from both displayed invoices and financial calculations.
+export function visibleCreditInvoices(invoices, settings) {
+  return invoices.filter(i => !settings?.firstPeriodMonth || i.month >= settings.firstPeriodMonth
+    || Object.keys(i.purchases || {}).length || Object.keys(i.transfers || {}).length
+    || i.bankPaidAt != null || (i.actualTotalCents != null && i.actualTotalCents !== 0));
 }
