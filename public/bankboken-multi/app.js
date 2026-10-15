@@ -1,7 +1,7 @@
-import { createCreditStore } from "./credit-card-store.js?v=credit-checkbox-20261015";
-import { createCreditUI } from "./credit-card-ui.js?v=credit-checkbox-20261015";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-checkbox-20261015";
-import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-checkbox-20261015";
+import { createCreditStore } from "./credit-card-store.js?v=credit-checkbox-date-20261015";
+import { createCreditUI } from "./credit-card-ui.js?v=credit-checkbox-date-20261015";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-checkbox-date-20261015";
+import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-checkbox-date-20261015";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,

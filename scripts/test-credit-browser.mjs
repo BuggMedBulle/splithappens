@@ -162,6 +162,7 @@ try {
   await page.locator("#e-date").fill("2026-10-10");
   await page.locator("#e-date").fill("2026-10-21");
   assert.equal(await page.locator("#credit-manual, #credit-purchase-month, #credit-card-used").count(), 0);
+  assert.match(await page.locator("#credit-purchase-period").innerText(), /Nov 2026/);
   await page.locator('#expense-form button[type="submit"]').click();
   await page.waitForFunction(() => document.getElementById("e-desc").value === "");
   assert.match(await page.locator("#balance-heading").innerText(), /100,00/);
