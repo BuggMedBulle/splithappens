@@ -44,23 +44,33 @@ try {
   await page.goto(url);
   await page.locator('[data-bankbook-id="pair"]').click({ timeout: 10000 });
   await page.locator("#app").waitFor({ state: "visible" });
-  assert.equal(await page.locator("#credit-source-button").isVisible(), false);
+  assert.equal(await page.locator("#credit-source-control").isVisible(), false);
   await page.locator("#settings-trigger").click();
   await page.locator("#credit-enable").check();
+  await page.locator("#credit-name").fill("Amex");
   await page.locator("#credit-cutoff").fill("20");
   await page.locator('#settings-form button[type="submit"]').click();
   await page.locator("#settings-modal").waitFor({ state: "hidden" });
-  await page.locator("#credit-source-button").waitFor({ state: "visible" });
+  await page.locator("#credit-source-control").waitFor({ state: "visible" });
   for (const [description, amount, split, holder] of [["Matvaror", "2000", "even", "alice"], ["Kläder A", "1500", "a", "alice"], ["Restaurang", "1000", "even", "bob"], ["Kläder B", "2500", "b", "bob"], ["Present A", "800", "a", "bob"]]) {
     await page.locator("#e-desc").fill(description);
     await page.locator("#e-amount").fill(amount);
     await page.locator("#e-date").fill("2026-10-10");
-    await page.locator("#credit-source-button").click();
-    await page.locator("#credit-card-used").selectOption(holder);
+    await page.locator("#credit-use").check();
+    await page.locator(`#e-payer [data-val="${holder === "alice" ? "A" : "B"}"]`).click();
     await page.locator(`#e-split [data-val="${split}"]`).click();
     await page.locator('#expense-form button[type="submit"]').click();
     await page.waitForFunction(() => document.getElementById("e-desc").value === "");
   }
+  assert.equal(await page.locator("#e-payer button").count(), 2);
+  assert.equal(await page.locator("#credit-source-name").innerText(), "Amex");
+  assert.equal(await page.locator("#credit-use").isChecked(), false);
+  const physicalCards = await page.evaluate(() => Object.values(window.__testDatabase()).filter(e => e.paymentSource === "creditCard" && e.type === "expense").map(e => [e.desc, e.cardMemberId, e.manualInvoiceMonth]));
+  assert.deepEqual(physicalCards.sort(), [["Matvaror", "alice", null], ["Kläder A", "alice", null], ["Restaurang", "bob", null], ["Kläder B", "bob", null], ["Present A", "bob", null]].sort());
+  await page.locator("#credit-use").check();
+  assert.equal(await page.locator("#e-amount").getAttribute("min"), "");
+  await page.locator("#credit-use").uncheck();
+  assert.equal(await page.locator("#e-amount").getAttribute("min"), "0.01");
   // Only the private debt is currently payable.
   assert.match(await page.locator("#balance-heading").innerText(), /1\s?200/);
   assert.equal(await page.locator("#balance-label").textContent(), "Att reglera nu");
@@ -123,7 +133,7 @@ try {
   await page.locator("#credit-close").click();
   // A return on an already settled invoice must not rewrite its previous debt.
   await page.locator("#e-desc").fill("Refund B");
-  await page.locator("#credit-source-button").click();
+  await page.locator("#credit-use").check();
   await page.locator("#e-amount").fill("-100");
   await page.locator("#e-date").fill("2026-10-10");
   await page.locator('#e-split [data-val="b"]').click();
@@ -145,18 +155,18 @@ try {
   assert.equal(transfers[1].cents, -10000);
   await page.locator("#credit-close").click();
   assert.match(await page.locator("#balance-heading").innerText(), /100,00/);
-  // Manually assign a purchase to the following invoice and preserve the live balance.
+  // Purchase date automatically assigns the following invoice and preserves the live balance.
   await page.locator("#e-desc").fill("Later posting");
-  await page.locator("#credit-source-button").click();
+  await page.locator("#credit-use").check();
   await page.locator("#e-amount").fill("250");
   await page.locator("#e-date").fill("2026-10-10");
-  await page.locator("#credit-manual").check();
-  await page.locator("#credit-purchase-month").fill("2026-11");
+  await page.locator("#e-date").fill("2026-10-21");
+  assert.equal(await page.locator("#credit-manual, #credit-purchase-month, #credit-card-used").count(), 0);
   await page.locator('#expense-form button[type="submit"]').click();
   await page.waitForFunction(() => document.getElementById("e-desc").value === "");
   assert.match(await page.locator("#balance-heading").innerText(), /100,00/);
   await page.locator("#e-desc").fill("Recurring card purchase");
-  await page.locator("#credit-source-button").click();
+  await page.locator("#credit-use").check();
   await page.locator("#e-amount").fill("25");
   await page.locator("#e-date").fill("2026-10-21");
   await page.locator("#e-recurring").check();
@@ -208,5 +218,5 @@ try {
   assert.equal(await page.locator("#credit-settings").isVisible(), false);
   await page.locator("#settings-close").click();
   assert.deepEqual(errors, []);
-  console.log("Browser acceptance passed: optional settings, 5 purchases, mismatch guard, reconciliation, net Swish 3087.50, reload, bank payment, statistics, English/dark mobile view, traced post-Swish refund, manual assignment, recurring card purchase, category persistence/future generation and ordinary three-person group regression.");
+  console.log("Browser acceptance passed: optional settings, 5 purchases, mismatch guard, reconciliation, net Swish 3087.50, reload, bank payment, statistics, English/dark mobile view, traced post-Swish refund, automatic date assignment, recurring card purchase, category persistence/future generation and ordinary three-person group regression.");
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }
