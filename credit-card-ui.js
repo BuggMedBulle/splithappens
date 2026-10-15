@@ -47,13 +47,19 @@ export function createCreditUI(ctx) {
     }
     $("credit-fee").value = config.feeCents / 100;
     $("credit-cutoff").value = config.cutoffDay || "";
+    $("credit-first-start").value = config.firstPeriodMonth ? periodForMonth(config.firstPeriodMonth, config.cutoffDay).start : "";
     $("credit-settings-fields").hidden = !config.enabled;
   }
   async function saveSettings() {
     if (!eligible()) return;
     const { a, b } = pairIds();
     const enabled = $("credit-enable").checked;
+    const start = $("credit-first-start").value;
+    const cutoff = Number($("credit-cutoff").value);
+    const firstPeriodMonth = start ? periodForPurchase(start, cutoff).month : null;
+    if (start && periodForMonth(firstPeriodMonth, cutoff).start !== start) throw new Error("invalidCreditStart");
     const config = createCreditCardSettings(a, b, {
+      firstPeriodMonth,
       enabled, name: $("credit-name").value.trim() || settings().name,
       primaryCardMemberId: $("credit-primary").value, extraCardMemberId: $("credit-extra").value,
       invoicePayerMemberId: $("credit-primary").value,
@@ -62,6 +68,7 @@ export function createCreditUI(ctx) {
     });
     await ctx.store().credit.saveSettings(config);
     ctx.book().creditCard = config;
+    await ensureCurrent();
   }
   function cardSelected() { return eligible() && ctx.payer() === "creditCard" && ctx.entryType() === "expense"; }
   function controls(entry) {
@@ -119,6 +126,7 @@ export function createCreditUI(ctx) {
     if (!active()) return;
     let month;
     try { month = periodForPurchase(ctx.today(), settings().cutoffDay).month; } catch { return; }
+    if (settings().firstPeriodMonth && month < settings().firstPeriodMonth) month = settings().firstPeriodMonth;
     const key = `${ctx.book().id}-${month}`;
     if (creatingKey === key || ctx.invoices().some(i => i.id === invoiceIdForMonth(month))) return;
     creatingKey = key;

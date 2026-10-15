@@ -1,4 +1,4 @@
-import { createCreditCardSettings, makeInvoice, periodForPurchase, invoiceIdForMonth, summarizeInvoice, transitionInvoice } from "./credit-card-model.js";
+import { createCreditCardSettings, makeInvoice, periodForPurchase, periodForMonth, invoiceIdForMonth, summarizeInvoice, transitionInvoice } from "./credit-card-model.js";
 
 // All financial mutations read and write the invoice document in the same
 // Firestore transaction as the expense. Conflicting writers are retried by Firestore.
@@ -45,7 +45,12 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
           if (!settings.enabled && old?.paymentSource !== "creditCard") throw new Error("creditDisabled");
           if (next.type !== "expense" || !Number.isFinite(next.amount) || next.amount === 0) throw new Error("invalidAmount");
           const date = next.purchaseDate || new Date(next.ts).toISOString().slice(0, 10);
+          if (settings.firstPeriodMonth && date < periodForMonth(settings.firstPeriodMonth, settings.cutoffDay).start) {
+            if (next.recurringId && createOnly) return null;
+            throw new Error("beforeCreditStart");
+          }
           const month = next.manualInvoiceMonth || periodForPurchase(date, settings.cutoffDay).month;
+          if (settings.firstPeriodMonth && month < settings.firstPeriodMonth) throw new Error("beforeCreditStart");
           next.accountId = "shared";
           next.invoiceId = invoiceIdForMonth(month);
           next.purchaseDate = date;
@@ -81,10 +86,11 @@ export function createCreditStore({ fs, db, bookId, userId, clock = Date.now }) 
     async ensureInvoice(month) {
       return fs.runTransaction(db, async tx => {
         const book = await read(tx, bookRef);
+        const { a, b, settings } = config(book);
+        if (settings.firstPeriodMonth && month < settings.firstPeriodMonth) throw new Error("beforeCreditStart");
         const invoiceId = invoiceIdForMonth(month);
         const existing = await read(tx, ref(invoiceId));
         if (existing) return invoiceId;
-        const { a, b, settings } = config(book);
         if (!settings.enabled) throw new Error("creditDisabled");
         tx.set(ref(invoiceId), makeInvoice(month, settings, a, b, clock()));
         return invoiceId;

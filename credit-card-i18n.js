@@ -1,5 +1,8 @@
 export const CREDIT_TRANSLATIONS = {
   sv: {
+    creditStartSetup: "Start för kreditkortet", creditFirstStart: "Första fakturaperiodens start",
+    creditFirstHelp: "Ange dagen efter en brytdag. Tidigare tomma fakturor tas bort från översikt och saldo. Fakturor med köp eller betalningar behålls.",
+    beforeCreditStart: "Köpet ligger före kreditkortets första fakturaperiod.", invalidCreditStart: "Första perioden ska börja dagen efter brytdagen.",
     creditTotal: "Totalt", creditRules: "Kortavgiften delas lika. Huvudkortsinnehavaren betalar fakturan.",
     creditClosingMonth: "Periodens slutmånad (manuellt)",
     creditPayableNow: "Att reglera nu", creditPendingBalance: "Kommande från kreditkort", creditNoPending: "Inget väntar på avräkning",
@@ -27,6 +30,9 @@ export const CREDIT_TRANSLATIONS = {
     creditStatsNotice: "Kortköp och avgifter ingår en gång. Fakturabetalningar och Swish är inte nya kostnader.",
   },
   en: {
+    creditStartSetup: "Credit card start", creditFirstStart: "First invoice period start",
+    creditFirstHelp: "Choose the day after a cutoff. Earlier empty invoices are excluded from the overview and balance. Invoices with purchases or payments are kept.",
+    beforeCreditStart: "The purchase is before the first credit card period.", invalidCreditStart: "The first period must begin the day after the cutoff.",
     creditTotal: "Total", creditRules: "The card fee is split equally. The primary cardholder pays the invoice.",
     creditClosingMonth: "Period closing month (manual)",
     creditPayableNow: "To settle now", creditPendingBalance: "Upcoming from credit card", creditNoPending: "Nothing awaiting settlement",
