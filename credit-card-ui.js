@@ -70,33 +70,27 @@ export function createCreditUI(ctx) {
     ctx.book().creditCard = config;
     await ensureCurrent();
   }
-  function cardSelected() { return eligible() && ctx.payer() === "creditCard" && ctx.entryType() === "expense"; }
+  function cardSelected() { return eligible() && $("credit-use").checked && ctx.entryType() === "expense" && (active() || editingCredit); }
   function controls(entry) {
     if (entry !== undefined) {
       editingCredit = entry?.paymentSource === "creditCard";
-      membersSelect($("credit-card-used"), true);
+      $("credit-use").checked = editingCredit;
       membersSelect($("credit-excluded-owner"));
-      $("credit-card-used").value = entry?.cardMemberId || pairIds()[ctx.slot() === "A" ? "a" : "b"] || "";
       $("credit-excluded-owner").value = entry?.excludedCostMemberId || pairIds()[ctx.slot() === "A" ? "a" : "b"] || "";
-      $("credit-manual").checked = Boolean(entry?.manualInvoiceMonth);
-      $("credit-purchase-month").value = entry?.manualInvoiceMonth || "";
     }
-    $("credit-source-button").hidden = !eligible() || (!active() && !editingCredit) || ctx.entryType() !== "expense";
+    $("credit-source-control").hidden = !eligible() || (!active() && !editingCredit) || ctx.entryType() !== "expense";
+    $("credit-source-name").textContent = ctx.book()?.creditCard?.name || ctx.t("creditSource");
+    if (ctx.entryType() !== "expense") $("credit-use").checked = false;
     const card = cardSelected();
     $("credit-purchase-fields").hidden = !card;
     $("e-amount").min = card ? "" : "0.01";
     if (card) {
-      if (!$("credit-card-used").options.length) membersSelect($("credit-card-used"), true);
       if (!$("credit-excluded-owner").options.length) membersSelect($("credit-excluded-owner"));
-      $("credit-purchase-month").disabled = !$("credit-manual").checked;
       try {
-        if (!$("credit-manual").checked) $("credit-purchase-month").value = periodForPurchase($("e-date").value || ctx.today(), settings().cutoffDay).month;
-        const month = $("credit-purchase-month").value;
-        const existing = ctx.invoices().find(i => i.id === invoiceIdForMonth(month));
-        const period = periodForMonth(month, settings().cutoffDay);
+        const period = periodForPurchase($("e-date").value || ctx.today(), settings().cutoffDay);
+        const existing = ctx.invoices().find(i => i.id === invoiceIdForMonth(period.month));
         $("credit-purchase-period").textContent = periodLabel(existing || { periodStart: period.start, periodEnd: period.end });
-      } catch { $("credit-purchase-month").value = ""; $("credit-purchase-period").textContent = ""; }
-      $("credit-purchase-month").closest("label").hidden = !$("credit-manual").checked;
+      } catch { $("credit-purchase-period").textContent = ""; }
       $("credit-excluded-fields").hidden = !(ctx.excludedAmount() > 0 || ctx.editingEntry()?.excludedAmount > 0);
     }
   }
@@ -105,10 +99,10 @@ export function createCreditUI(ctx) {
     const config = settings();
     const excluded = ctx.excludedAmount() || (ctx.editingEntry()?.excludedAmount || 0);
     const purchaseDate = $("e-date").value;
-    const month = $("credit-manual").checked ? $("credit-purchase-month").value : periodForPurchase(purchaseDate, config.cutoffDay).month;
+    const month = periodForPurchase(purchaseDate, config.cutoffDay).month;
     return {
-      paymentSource: "creditCard", accountId: "shared", cardMemberId: $("credit-card-used").value,
-      invoiceId: invoiceIdForMonth(month), manualInvoiceMonth: $("credit-manual").checked ? month : null,
+      paymentSource: "creditCard", accountId: "shared", cardMemberId: pairIds()[ctx.payer() === "A" ? "a" : "b"],
+      invoiceId: invoiceIdForMonth(month), manualInvoiceMonth: null,
       purchaseDate, amount: amount + (ctx.excludedAmount() || 0), excludedAmount: excluded,
       excludedCostMemberId: excluded ? $("credit-excluded-owner").value : null,
     };
@@ -121,7 +115,7 @@ export function createCreditUI(ctx) {
     if (!reason?.trim()) throw new Error("correctionReasonRequired");
     return reason.trim();
   }
-  function reset() { selectedId = ""; dirtyInvoice = false; creatingKey = ""; editingCredit = false; $("credit-modal").hidden = true; $("credit-summary").hidden = true; }
+  function reset() { $("credit-use").checked = false; selectedId = ""; dirtyInvoice = false; creatingKey = ""; editingCredit = false; $("credit-modal").hidden = true; $("credit-summary").hidden = true; }
   async function ensureCurrent() {
     if (!active()) return;
     let month;
@@ -252,6 +246,6 @@ export function createCreditUI(ctx) {
     const entry = ctx.entries().find(p => p.id === id);
     if (entry) { $("credit-modal").hidden = true; ctx.edit(entry); }
   });
-  for (const id of ["credit-manual", "credit-purchase-month", "credit-card-used", "credit-excluded-owner"]) $(id).addEventListener("change", () => { controls(); ctx.preview(); ctx.dirty(); });
+  for (const id of ["credit-use", "credit-excluded-owner"]) $(id).addEventListener("change", () => { controls(); ctx.preview(); ctx.dirty(); });
   return { settingsOpen, saveSettings, controls, purchaseFields, cardSelected, correctionReason, reset, render, ensureCurrent, error };
 }

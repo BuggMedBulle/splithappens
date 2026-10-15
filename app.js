@@ -1,7 +1,7 @@
-import { createCreditStore } from "./credit-card-store.js?v=credit-start-20261015";
-import { createCreditUI } from "./credit-card-ui.js?v=credit-start-20261015";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-start-20261015";
-import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-start-20261015";
+import { createCreditStore } from "./credit-card-store.js?v=credit-checkbox-20261015";
+import { createCreditUI } from "./credit-card-ui.js?v=credit-checkbox-20261015";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-checkbox-20261015";
+import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-checkbox-20261015";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -1541,7 +1541,7 @@ function updatePersonLabels() {
   rightPayerButton.style.setProperty("--profile-avatar", JSON.stringify(personAvatar(rightKey)));
   leftPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[leftKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
   rightPayerButton.style.setProperty("--profile-avatar-size", PEOPLE[rightKey]?.avatarMode === "emoji" ? "0.78rem" : "0.7rem");
-  payer.append(leftPayerButton, rightPayerButton, document.getElementById("credit-source-button"));
+  payer.append(leftPayerButton, rightPayerButton);
 
   const presets = document.querySelector("#e-split .split-presets");
   const leftSplit = leftKey === "A" ? "a" : "b";
@@ -1593,7 +1593,6 @@ function onSplitChange(split) {
 
 function onEntryTypeChange(type) {
   const isIncome = type === "income";
-  if (isIncome && getPayer?.() === "creditCard") setActive("e-payer", CURRENT_USER);
   creditUI?.controls();
   const recurringField = document.getElementById("recurring-field");
   recurringField.hidden = !isPairExperience() || isIncome || Boolean(EDITING_ID);
@@ -2273,7 +2272,7 @@ async function startEditing(entry) {
   document.getElementById("e-amount").value = entry.amount;
   document.getElementById("e-date").value = dateInputValue(entry.ts);
   setActive("e-type", entry.type === "income" ? "income" : "expense");
-  setActive("e-payer", entry.paymentSource === "creditCard" ? "creditCard" : entry.payer);
+  setActive("e-payer", entry.paymentSource === "creditCard" ? activeGroupProfiles().find(([uid]) => uid === entry.cardMemberId)?.[1]?.slot || entry.payer : entry.payer);
   creditUI?.controls(entry);
   setActive("e-split", entry.split || "even");
   document.getElementById("e-custom-share").value = entry.split === "custom"
@@ -2640,9 +2639,9 @@ function initApp() {
     const expense = {
       type, desc, amount, icon: getIcon(),
       ...creditUI.purchaseFields(amount),
-      payer: legacyPayer === "creditCard" ? activeGroupProfiles().find(([uid]) => uid === document.getElementById("credit-card-used").value)?.[1]?.slot || CURRENT_USER : legacyPayer, split: effectiveSplit,
+      payer: legacyPayer, split: effectiveSplit,
       shareA: effectiveSplit === "custom" ? customShareA() : null,
-      payerUid: creditUI.cardSelected() ? document.getElementById("credit-card-used").value : payerUid || null,
+      payerUid: creditUI.cardSelected() ? creditUI.purchaseFields(amount).cardMemberId : payerUid || null,
       multiSplitMode: MULTI_EXPENSE_MODE ? MULTI_SPLIT_MODE : null,
       participantUids: MULTI_EXPENSE_MODE ? participantUids : null,
       excludedAmount: creditUI.cardSelected() ? creditUI.purchaseFields(amount).excludedAmount : 0,
