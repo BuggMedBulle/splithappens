@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { memoryDatabase } from "./helpers/transaction-memory.mjs";
 import { createCreditStore } from "../public/bankboken-multi/credit-card-store.js";
-import { createCreditCardSettings, periodForPurchase, periodForMonth, pairCreditBalance, invoiceFeeEntries, summarizeInvoice, invoiceCostShares } from "../public/bankboken-multi/credit-card-model.js";
+import { createCreditCardSettings, periodForPurchase, periodForMonth, pairCreditBalance, invoiceFeeEntries, summarizeInvoice, invoiceCostShares, visibleCreditInvoices, pendingCreditBalance } from "../public/bankboken-multi/credit-card-model.js";
 import { balanceOf } from "../public/bankboken-multi/finance.js";
 
 const settings = createCreditCardSettings("alice", "bob", { enabled: true, cutoffDay: 20 });
@@ -221,4 +221,26 @@ test("new invoices use equal fees and the primary holder as payer while old snap
   assert.equal(memory.read(prefix + "credit-invoice-2026-11").invoicePayerMemberId, "alice");
   assert.deepEqual(memory.read(prefix + invoiceId), original);
   assert.equal(memory.read("bankbooks/pair").creditCard.feeShareA, 0.5);
+});
+
+
+test("first period excludes empty setup invoices and blocks their recreation and backdated purchases", async () => {
+  const f = fixture();
+  await f.store.ensureInvoice("2026-09");
+  await f.store.ensureInvoice("2026-10");
+  await f.store.saveSettings({ ...settings, cutoffDay: 3, firstPeriodMonth: "2026-12" });
+  await assert.rejects(f.store.ensureInvoice("2026-11"), /beforeCreditStart/);
+  await assert.rejects(f.store.saveEntry("early", cardPurchase(100)), /beforeCreditStart/);
+  await f.store.ensureInvoice("2026-12");
+  const all = ["2026-09", "2026-10", "2026-12"].map(m => f.memory.read(prefix + "credit-invoice-" + m));
+  const visible = visibleCreditInvoices(all, { firstPeriodMonth: "2026-12" });
+  assert.equal(visible.length, 1);
+  assert.equal(pendingCreditBalance(visible), 287.5);
+  assert.equal(invoiceFeeEntries(visible).length, 1);
+  await f.store.saveEntry("first", cardPurchase(100, "even", { purchaseDate: "2026-11-04" }));
+  assert.equal(f.memory.read(prefix + "first").invoiceId, "credit-invoice-2026-12");
+  assert.equal(visibleCreditInvoices(all, {}).length, 3); // Start can be cleared to recover earlier setup invoices.
+  const withPurchase = { ...all[0], purchases: { saved: { amount: 100 } } };
+  const withTransfer = { ...all[1], transfers: { r0: { cents: 100 } } };
+  assert.equal(visibleCreditInvoices([withPurchase, withTransfer], { firstPeriodMonth: "2026-12" }).length, 2);
 });
