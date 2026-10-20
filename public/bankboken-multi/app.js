@@ -1,7 +1,7 @@
-import { createCreditStore } from "./credit-card-store.js?v=credit-checkbox-date-20261015";
-import { createCreditUI } from "./credit-card-ui.js?v=credit-checkbox-date-20261015";
-import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=credit-checkbox-date-20261015";
-import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=credit-checkbox-date-20261015";
+import { createCreditStore } from "./credit-card-store.js?v=guest-auth-20261020";
+import { createCreditUI } from "./credit-card-ui.js?v=guest-auth-20261020";
+import { CREDIT_TRANSLATIONS } from "./credit-card-i18n.js?v=guest-auth-20261020";
+import { pairCreditBalance, pendingCreditBalance, visibleCreditInvoices, invoiceDisplayMonth, formatInvoiceMonth, invoiceFeeEntries, invoiceCostShares } from "./credit-card-model.js?v=guest-auth-20261020";
 import {
   sharesOf, balanceOf,
   groupNetBalances as calculateGroupNetBalances,
@@ -32,6 +32,8 @@ let fs;
 let auth;
 let authApi;
 let signedInUser;
+let authReady = false;
+let guestSubmitting = false;
 let activeBankbook;
 let unsubscribeEntries;
 let unsubscribeWaitingRoom;
@@ -45,6 +47,9 @@ let SHOW_ALL_GROUP_DEBTS = false;
 
 const TRANSLATIONS = {
   sv: {
+    guestJoin: "Anslut som gäst", guestContinue: "Fortsätt som gäst", backToLogin: "Tillbaka till inloggning",
+    guestIntro: "Välj ett namn och anslut med gruppens inbjudan. Inget lösenord behövs.", guestPersistence: "Gästkontot sparas i den här webbläsaren.",
+    authNotReady: "Inloggningen laddas fortfarande. Vänta ett ögonblick och försök igen.",
     authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
     email: "E-post", password: "Lösenord, minst 6 tecken", login: "Logga in", loggingIn: "Loggar in…", createAccount: "Skapa ett konto", creating: "Skapar konto…",
     forgotPassword: "Glömt lösenord?", inviteOther: "Bjud in fler personer", chooseGroup: "Välj grupp", createGroup: "+ Skapa ny grupp",
@@ -83,7 +88,7 @@ const TRANSLATIONS = {
     noDebtFull: "Ingen skuld – {name} står för hela beloppet.", becomesOwed: "{name} blir skyldig {recipient} {amount}.",
     welcomeWaiting: "Hej {name}! Konfigurera er grupp.", groupMembers: "Medlemmar", groupMemberCount: "{count} av {max} platser använda", groupReadyHelp: "Nio demoprofiler visas lokalt och sparas inte.", groupFull: "Gruppen är full.", demoMember: "Demo", continueToApp: "Fortsätt till appen", createAccountShort: "Skapa konto",
     alreadyAccount: "Jag har redan ett konto", sending: "Skickar…",
-    resetSent: "Ett återställningsmail har skickats. Kontrollera även skräpposten.",
+    resetSent: "Om adressen är kopplad till ett konto får du ett mejl med en återställningslänk. Kontrollera även skräpposten. Använd den senaste länken.",
     enterEmail: "Fyll i din e-postadress först.", shareInvite: "Anslut till vår delning",
     completeAccount: "Slutför konto", switchAccount: "Logga ut och byt konto", synced: "Synkad (Firebase)",
     syncFailed: "Synkningen misslyckades", syncing: "Ansluter…", incomeIcon: "Inkomst", otherIcon: "Övrigt",
@@ -116,6 +121,9 @@ const TRANSLATIONS = {
     missingAccountProfile: "Kontot är skapat, men profilen saknas. Publicera Firestore-reglerna och slutför sedan kontot här.",
   },
   en: {
+    guestJoin: "Join as guest", guestContinue: "Continue as guest", backToLogin: "Back to login",
+    guestIntro: "Choose a name and join using the group's invitation. No password needed.", guestPersistence: "Your guest account is saved in this browser.",
+    authNotReady: "Sign-in is still loading. Please wait a moment and try again.",
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
     email: "Email", password: "Password, at least 6 characters", login: "Log in", loggingIn: "Logging in…", createAccount: "Create an account", creating: "Creating account…",
     forgotPassword: "Forgot password?", inviteOther: "Invite more people", chooseGroup: "Choose group", createGroup: "+ Create new group",
@@ -154,7 +162,7 @@ const TRANSLATIONS = {
     noDebtFull: "No debt – {name} covers the full amount.", becomesOwed: "{name} owes {recipient} {amount}.",
     welcomeWaiting: "Hi {name}! Set up your group.", groupMembers: "Members", groupMemberCount: "{count} of {max} spots used", groupReadyHelp: "Nine demo profiles are shown locally and are not saved.", groupFull: "The group is full.", demoMember: "Demo", continueToApp: "Continue to app", createAccountShort: "Create account",
     alreadyAccount: "I already have an account", sending: "Sending…",
-    resetSent: "A password reset email has been sent. Please also check your spam folder.",
+    resetSent: "If the address is linked to an account, you will receive a password reset email. Check your spam folder and use the latest link.",
     enterEmail: "Enter your email address first.", shareInvite: "Join our shared expenses",
     completeAccount: "Complete account", switchAccount: "Log out and switch account", synced: "Synced (Firebase)",
     syncFailed: "Sync failed", syncing: "Connecting…", incomeIcon: "Income", otherIcon: "Other",
@@ -2776,12 +2784,22 @@ function showOnly(screenId) {
 function showError(elementId, error) {
   const element = document.getElementById(elementId);
   const messages = LANGUAGE === "en" ? {
+    "auth/invalid-email": "Enter a valid email address.",
+    "auth/too-many-requests": "Too many attempts. Wait a while and try again.",
+    "auth/network-request-failed": "Could not connect. Check your connection and try again.",
+    "auth/operation-not-allowed": "This sign-in method has not been enabled yet. Contact the group owner.",
+    "auth/admin-restricted-operation": "Guest sign-in has not been enabled yet. Contact the group owner.",
     "auth/email-already-in-use": "An account already exists with that email address.",
     "auth/invalid-credential": "Incorrect email address or password.",
     "auth/weak-password": "The password must contain at least 6 characters.",
     "auth/configuration-not-found": "Login is not enabled in Firebase yet. Enable Email/Password under Authentication → Sign-in method.",
     "permission-denied": "The Firestore rules for Split Happens have not been published yet.",
   } : {
+    "auth/invalid-email": "Fyll i en giltig e-postadress.",
+    "auth/too-many-requests": "För många försök. Vänta en stund och försök igen.",
+    "auth/network-request-failed": "Kunde inte ansluta. Kontrollera uppkopplingen och försök igen.",
+    "auth/operation-not-allowed": "Inloggningsmetoden är inte aktiverad ännu. Kontakta gruppens ägare.",
+    "auth/admin-restricted-operation": "Gästinloggning är inte aktiverad ännu. Kontakta gruppens ägare.",
     "auth/email-already-in-use": "Det finns redan ett konto med den e-postadressen.",
     "auth/invalid-credential": "Fel e-postadress eller lösenord.",
     "auth/weak-password": "Lösenordet måste innehålla minst 6 tecken.",
@@ -3075,6 +3093,10 @@ function watchActiveBankbook(bankbookId) {
 }
 
 function updateAuthLabels() {
+  if (!authSubmitting) document.getElementById("auth-submit").disabled = !authReady;
+  if (!guestSubmitting) document.getElementById("guest-submit").disabled = !authReady;
+  document.getElementById("auth-guest").disabled = !authReady || guestSubmitting || authSubmitting;
+  if (!document.getElementById("auth-reset").dataset.sending) document.getElementById("auth-reset").disabled = !authReady;
   document.querySelector(".auth-card .auth-intro").textContent = t(registrationMode ? "authRegisterIntro" : "authIntro");
   if (profileCompletionMode) {
     document.getElementById("auth-submit").textContent = t("completeAccount");
@@ -3087,6 +3109,7 @@ function updateAuthLabels() {
 }
 
 document.getElementById("auth-mode").addEventListener("click", () => {
+  if (authSubmitting || guestSubmitting) return;
   if (profileCompletionMode) {
     authApi.signOut(auth);
     return;
@@ -3103,7 +3126,42 @@ document.getElementById("auth-mode").addEventListener("click", () => {
   document.getElementById("auth-success").hidden = true;
 });
 
+function showGuestForm(show) {
+  document.querySelector(".auth-card .auth-intro").hidden = show;
+  document.getElementById("guest-form").hidden = !show;
+  document.getElementById("auth-form").hidden = show;
+  document.getElementById("auth-mode").hidden = show;
+  document.getElementById("auth-reset").hidden = show || registrationMode;
+  document.getElementById("auth-guest").hidden = show;
+  document.getElementById("auth-error").hidden = true;
+  document.getElementById("auth-success").hidden = true;
+  if (show) document.getElementById("guest-name").focus();
+}
+
+document.getElementById("auth-guest").addEventListener("click", () => showGuestForm(true));
+document.getElementById("guest-cancel").addEventListener("click", () => showGuestForm(false));
+document.getElementById("guest-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (guestSubmitting || authSubmitting || !authReady || !event.currentTarget.reportValidity()) return;
+  const name = document.getElementById("guest-name").value.trim();
+  if (!name) { showError("auth-error", new Error(t("requiredProfileName"))); return; }
+  guestSubmitting = true;
+  document.getElementById("guest-submit").disabled = true;
+  document.getElementById("guest-cancel").disabled = true;
+  document.getElementById("auth-error").hidden = true;
+  try {
+    const credential = signedInUser?.isAnonymous ? { user: signedInUser } : await authApi.signInAnonymously(auth);
+    signedInUser = credential.user;
+    const profile = { name, swish: "", color: defaultProfileColor(signedInUser.uid), avatarMode: "letter", avatarEmoji: "", guest: true, createdAt: fs.serverTimestamp() };
+    await fs.setDoc(fs.doc(db, "users", signedInUser.uid), profile);
+    userProfile = profile;
+    await refreshBankbookMenu();
+  } catch (error) { showError("auth-error", error); }
+  finally { guestSubmitting = false; document.getElementById("guest-cancel").disabled = false; updateAuthLabels(); }
+});
+
 document.getElementById("auth-reset").addEventListener("click", async () => {
+  if (!authReady) { showError("auth-error", new Error(t("authNotReady"))); return; }
   const email = document.getElementById("auth-email").value.trim();
   const button = document.getElementById("auth-reset");
   document.getElementById("auth-error").hidden = true;
@@ -3113,17 +3171,28 @@ document.getElementById("auth-reset").addEventListener("click", async () => {
     document.getElementById("auth-email").focus();
     return;
   }
+  if (!document.getElementById("auth-email").checkValidity()) {
+    showError("auth-error", { code: "auth/invalid-email" });
+    document.getElementById("auth-email").focus();
+    return;
+  }
   try {
     button.disabled = true;
+    button.dataset.sending = "true";
     button.textContent = t("sending");
+    auth.languageCode = LANGUAGE;
     await authApi.sendPasswordResetEmail(auth, email);
     const success = document.getElementById("auth-success");
     success.textContent = t("resetSent");
     success.hidden = false;
   } catch (error) {
-    showError("auth-error", error);
+    if (error?.code === "auth/user-not-found") {
+      document.getElementById("auth-success").textContent = t("resetSent");
+      document.getElementById("auth-success").hidden = false;
+    } else showError("auth-error", error);
   } finally {
-    button.disabled = false;
+    delete button.dataset.sending;
+    button.disabled = !authReady;
     button.textContent = t("forgotPassword");
   }
 });
@@ -3131,10 +3200,11 @@ document.getElementById("auth-reset").addEventListener("click", async () => {
 let authSubmitting = false;
 
 async function submitAuthForm() {
-  if (authSubmitting) return;
+  if (authSubmitting || guestSubmitting || !authReady || !document.getElementById("auth-form").reportValidity()) return;
   const submitButton = document.getElementById("auth-submit");
   authSubmitting = true;
   submitButton.disabled = true;
+  updateAuthLabels();
   document.getElementById("auth-error").hidden = true;
   document.getElementById("auth-success").hidden = true;
   const email = document.getElementById("auth-email").value.trim();
@@ -3770,6 +3840,7 @@ async function initializeFirebase() {
       unsubscribeActiveBankbook = null;
       closeSettings();
       profileCompletionMode = false;
+      showGuestForm(false);
       document.getElementById("auth-email").disabled = false;
       document.getElementById("auth-password").hidden = false;
       document.getElementById("auth-password").required = true;
@@ -3781,6 +3852,10 @@ async function initializeFirebase() {
     } catch (error) {
       showOnly("auth-screen");
       showError("auth-error", error);
+      return;
+    }
+    if (!userProfile && user.isAnonymous) {
+      if (!guestSubmitting) { showOnly("auth-screen"); showGuestForm(true); }
       return;
     }
     if (!userProfile) {
@@ -3802,6 +3877,8 @@ async function initializeFirebase() {
     }
     await refreshBankbookMenu();
   });
+  authReady = true;
+  updateAuthLabels();
 }
 
 creditUI = createCreditUI({
