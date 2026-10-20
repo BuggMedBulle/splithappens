@@ -117,6 +117,8 @@ try {
   await page.locator("#guest-submit").click();
   assert.equal(await page.evaluate(() => window.__guestCalls || 0), 0);
   await page.locator("#guest-name").fill("Testgäst");
+  assert.equal(await page.locator("#guest-swish").getAttribute("required"), null);
+  await page.locator("#guest-swish").fill("07000000003");
   await page.evaluate(() => { window.__guestError = "auth/admin-restricted-operation"; });
   await page.locator("#guest-submit").click();
   await page.waitForFunction(() => !document.getElementById("guest-submit").disabled);
@@ -129,6 +131,8 @@ try {
   const saved = await page.evaluate(() => window.__testDatabase());
   assert.equal(saved["users/guest-test"].name, "Testgäst");
   assert.equal(saved["users/guest-test"].guest, true);
+  assert.equal(saved["users/guest-test"].swish, "46700000003");
+  assert.equal(saved["bankbooks/guest-invite"].members["reserved-guest"].swish, "46700000003");
   assert.equal(saved["users/guest-test"].email, undefined);
   assert.deepEqual(saved["bankbooks/guest-invite"].memberIds, ["alice", "guest-test"]);
   assert.equal(saved["bankbooks/guest-invite"].members["reserved-guest"].claimedBy, "guest-test");
