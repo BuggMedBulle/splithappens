@@ -47,7 +47,7 @@ let SHOW_ALL_GROUP_DEBTS = false;
 
 const TRANSLATIONS = {
   sv: {
-    guestJoin: "Anslut som gäst", guestContinue: "Fortsätt som gäst", backToLogin: "Tillbaka till inloggning",
+    guestSwish: "Swishnummer (valfritt)", missingSwish: "Personen saknar Swishnummer.", guestJoin: "Anslut som gäst", guestContinue: "Fortsätt som gäst", backToLogin: "Tillbaka till inloggning",
     guestIntro: "Välj ett namn och anslut med gruppens inbjudan. Inget lösenord behövs.", guestPersistence: "Gästkontot sparas i den här webbläsaren.",
     authNotReady: "Inloggningen laddas fortfarande. Vänta ett ögonblick och försök igen.",
     authIntro: "Logga in för att komma åt er delning.", authRegisterIntro: "Skapa ett konto för att komma igång.", yourName: "Ditt namn", swishNumber: "Swishnummer",
@@ -121,7 +121,7 @@ const TRANSLATIONS = {
     missingAccountProfile: "Kontot är skapat, men profilen saknas. Publicera Firestore-reglerna och slutför sedan kontot här.",
   },
   en: {
-    guestJoin: "Join as guest", guestContinue: "Continue as guest", backToLogin: "Back to login",
+    guestSwish: "Swish number (optional)", missingSwish: "This person has no Swish number.", guestJoin: "Join as guest", guestContinue: "Continue as guest", backToLogin: "Back to login",
     guestIntro: "Choose a name and join using the group's invitation. No password needed.", guestPersistence: "Your guest account is saved in this browser.",
     authNotReady: "Sign-in is still loading. Please wait a moment and try again.",
     authIntro: "Log in to access your shared expenses.", authRegisterIntro: "Create an account to get started.", yourName: "Your name", swishNumber: "Swish number",
@@ -1336,7 +1336,7 @@ function onSettleClick() {
   if (btn.hidden) return;
   const { payee, amount } = btn.dataset;
   if (!payee) {
-    window.alert(t("demoMissingSwish"));
+    window.alert(t("missingSwish"));
     return;
   }
   if (usesGroupExperience()) {
@@ -2758,7 +2758,7 @@ document.getElementById("swish-suggestions").addEventListener("click", (event) =
   if (!button) return;
   const { payee, payeeUid, amount } = button.dataset;
   if (!payee) {
-    window.alert(t("demoMissingSwish"));
+    window.alert(t("missingSwish"));
     return;
   }
   PENDING_GROUP_SETTLEMENT = { toUid: payeeUid, amount: Number(amount) };
@@ -3152,7 +3152,7 @@ document.getElementById("guest-form").addEventListener("submit", async event => 
   try {
     const credential = signedInUser?.isAnonymous ? { user: signedInUser } : await authApi.signInAnonymously(auth);
     signedInUser = credential.user;
-    const profile = { name, swish: "", color: defaultProfileColor(signedInUser.uid), avatarMode: "letter", avatarEmoji: "", guest: true, createdAt: fs.serverTimestamp() };
+    const profile = { name, swish: normalizeSwish(document.getElementById("guest-swish").value), color: defaultProfileColor(signedInUser.uid), avatarMode: "letter", avatarEmoji: "", guest: true, createdAt: fs.serverTimestamp() };
     await fs.setDoc(fs.doc(db, "users", signedInUser.uid), profile);
     userProfile = profile;
     await refreshBankbookMenu();
@@ -3832,6 +3832,8 @@ async function initializeFirebase() {
   }
   authApi.onAuthStateChanged(auth, async (user) => {
     signedInUser = user;
+    // The guest submit handler owns initial profile creation and invitation joining.
+    if (user?.isAnonymous && guestSubmitting) return;
     if (!user) {
       if (unsubscribeEntries) unsubscribeEntries();
       if (unsubscribeWaitingRoom) unsubscribeWaitingRoom();

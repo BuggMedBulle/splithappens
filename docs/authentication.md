@@ -6,7 +6,7 @@ The app uses Firebase Auth with browser-local persistence, falling back to sessi
 
 Enable **Authentication → Sign-in method → Anonymous** in the `hh-bankboken` Firebase project. A project administrator must do this; app deployment does not enable a Firebase provider. When disabled, the app displays a readable error and lets the guest retry.
 
-The guest chooses a name. Firebase creates an anonymous UID and the app saves the guest profile under `users/{uid}`. The existing invitation, reserved participant selection, group capacity, expenses and balances are reused. No email address or password is collected. The guest identity persists in the same browser. Cross-device sign-in and conversion to an email/password account are not part of this implementation. Automatic deletion of anonymous identities should not be enabled for identities with retained group membership.
+The guest chooses a name and may optionally provide a Swish number to receive payments through the existing flow. Firebase creates an anonymous UID and the app saves the guest profile under `users/{uid}`. The existing invitation, reserved participant selection, group capacity, expenses and balances are reused. No email address or password is collected. The guest identity persists in the same browser. Cross-device sign-in and conversion to an email/password account are not part of this implementation. Automatic deletion of anonymous identities should not be enabled for identities with retained group membership.
 
 If profile creation fails after anonymous sign-in, retrying reuses the signed-in UID rather than creating another identity. A returning anonymous identity without a profile is shown the guest name form.
 
