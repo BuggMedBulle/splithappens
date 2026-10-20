@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "test:finance": "node --test tests/finance*.test.mjs tests/credit-card-model.test.mjs",
-    "test:browser": "node scripts/test-credit-browser.mjs"
+    "test:browser": "node scripts/test-credit-browser.mjs && node scripts/test-auth-browser.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

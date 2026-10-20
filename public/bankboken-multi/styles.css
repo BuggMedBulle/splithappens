@@ -1123,3 +1123,6 @@ html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-sett
 .recurring-category select:disabled { opacity: .6; }
 
 .credit-pending-balance { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+
+#guest-form p { margin: 14px 0; line-height: 1.5; }
+.auth-card button:disabled { opacity: .5; cursor: default; }
