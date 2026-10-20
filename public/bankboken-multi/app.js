@@ -3095,7 +3095,7 @@ function watchActiveBankbook(bankbookId) {
 function updateAuthLabels() {
   if (!authSubmitting) document.getElementById("auth-submit").disabled = !authReady;
   if (!guestSubmitting) document.getElementById("guest-submit").disabled = !authReady;
-  document.getElementById("auth-guest").disabled = !authReady || guestSubmitting;
+  document.getElementById("auth-guest").disabled = !authReady || guestSubmitting || authSubmitting;
   if (!document.getElementById("auth-reset").dataset.sending) document.getElementById("auth-reset").disabled = !authReady;
   document.querySelector(".auth-card .auth-intro").textContent = t(registrationMode ? "authRegisterIntro" : "authIntro");
   if (profileCompletionMode) {
@@ -3109,6 +3109,7 @@ function updateAuthLabels() {
 }
 
 document.getElementById("auth-mode").addEventListener("click", () => {
+  if (authSubmitting || guestSubmitting) return;
   if (profileCompletionMode) {
     authApi.signOut(auth);
     return;
@@ -3141,7 +3142,7 @@ document.getElementById("auth-guest").addEventListener("click", () => showGuestF
 document.getElementById("guest-cancel").addEventListener("click", () => showGuestForm(false));
 document.getElementById("guest-form").addEventListener("submit", async event => {
   event.preventDefault();
-  if (guestSubmitting || !authReady || !event.currentTarget.reportValidity()) return;
+  if (guestSubmitting || authSubmitting || !authReady || !event.currentTarget.reportValidity()) return;
   const name = document.getElementById("guest-name").value.trim();
   if (!name) { showError("auth-error", new Error(t("requiredProfileName"))); return; }
   guestSubmitting = true;
@@ -3199,10 +3200,11 @@ document.getElementById("auth-reset").addEventListener("click", async () => {
 let authSubmitting = false;
 
 async function submitAuthForm() {
-  if (authSubmitting || !authReady || !document.getElementById("auth-form").reportValidity()) return;
+  if (authSubmitting || guestSubmitting || !authReady || !document.getElementById("auth-form").reportValidity()) return;
   const submitButton = document.getElementById("auth-submit");
   authSubmitting = true;
   submitButton.disabled = true;
+  updateAuthLabels();
   document.getElementById("auth-error").hidden = true;
   document.getElementById("auth-success").hidden = true;
   const email = document.getElementById("auth-email").value.trim();
