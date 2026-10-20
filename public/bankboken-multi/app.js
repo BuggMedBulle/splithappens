@@ -3832,6 +3832,8 @@ async function initializeFirebase() {
   }
   authApi.onAuthStateChanged(auth, async (user) => {
     signedInUser = user;
+    // The guest submit handler owns initial profile creation and invitation joining.
+    if (user?.isAnonymous && guestSubmitting) return;
     if (!user) {
       if (unsubscribeEntries) unsubscribeEntries();
       if (unsubscribeWaitingRoom) unsubscribeWaitingRoom();
