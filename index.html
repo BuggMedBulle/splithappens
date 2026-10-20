@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Boldonse&family=Google+Sans+Flex:opsz,wght@6..144,300..800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=credit-checkbox-date-20261015" />
+  <link rel="stylesheet" href="styles.css?v=guest-auth-20261020" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>" />
 </head>
 <body>
@@ -26,12 +26,21 @@
         <input id="auth-swish" type="tel" placeholder="Swishnummer" data-i18n-placeholder="swishNumber" autocomplete="tel" hidden />
         <input id="auth-email" type="email" placeholder="E-post" data-i18n-placeholder="email" autocomplete="email" required />
         <input id="auth-password" type="password" placeholder="Lösenord, minst 6 tecken" data-i18n-placeholder="password" autocomplete="current-password" required minlength="6" />
-        <button id="auth-submit" type="submit" data-i18n="login">Logga in</button>
+        <button id="auth-submit" type="submit" disabled data-i18n="login">Logga in</button>
       </form>
       <button id="auth-mode" class="text-button" type="button" data-i18n="createAccount">Skapa ett konto</button>
-      <button id="auth-reset" class="text-button auth-reset" type="button" data-i18n="forgotPassword">Glömt lösenord?</button>
-      <p id="auth-error" class="error" hidden></p>
-      <p id="auth-success" class="success" hidden></p>
+      <button id="auth-reset" disabled class="text-button auth-reset" type="button" data-i18n="forgotPassword">Glömt lösenord?</button>
+      <button id="auth-guest" class="text-button" type="button" data-i18n="guestJoin" disabled>Anslut som gäst</button>
+      <form id="guest-form" hidden>
+        <p data-i18n="guestIntro">Välj ett namn och anslut med gruppens inbjudan. Inget lösenord behövs.</p>
+        <input id="guest-name" type="text" maxlength="40" required autocomplete="nickname" data-i18n-placeholder="yourName" placeholder="Ditt namn" />
+        <input id="guest-swish" type="tel" maxlength="20" autocomplete="tel" data-i18n-placeholder="guestSwish" placeholder="Swishnummer (valfritt)" />
+        <p class="field-help" data-i18n="guestPersistence">Gästkontot sparas i den här webbläsaren.</p>
+        <button id="guest-submit" type="submit" data-i18n="guestContinue" disabled>Fortsätt som gäst</button>
+        <button id="guest-cancel" type="button" class="text-button" data-i18n="backToLogin">Tillbaka till inloggning</button>
+      </form>
+      <p id="auth-error" role="alert" class="error" hidden></p>
+      <p id="auth-success" role="status" class="success" hidden></p>
     </div>
   </div>
 
@@ -565,6 +574,6 @@
     <p class="receipt-lightbox-hint" data-i18n="receiptZoomHint">Nyp för att zooma · dra för att flytta</p>
   </div>
 
-  <script type="module" src="app.js?v=credit-checkbox-date-20261015"></script>
+  <script type="module" src="app.js?v=guest-auth-20261020"></script>
 </body>
 </html>
