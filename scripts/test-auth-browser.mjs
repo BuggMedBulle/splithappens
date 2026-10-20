@@ -118,7 +118,7 @@ try {
   assert.equal(await page.evaluate(() => window.__guestCalls || 0), 0);
   await page.locator("#guest-name").fill("Testgäst");
   assert.equal(await page.locator("#guest-swish").getAttribute("required"), null);
-  await page.locator("#guest-swish").fill("07000000003");
+  await page.locator("#guest-swish").fill("0700000003");
   await page.evaluate(() => { window.__guestError = "auth/admin-restricted-operation"; });
   await page.locator("#guest-submit").click();
   await page.waitForFunction(() => !document.getElementById("guest-submit").disabled);
