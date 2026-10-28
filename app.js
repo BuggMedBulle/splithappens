@@ -43,6 +43,7 @@ let openingBankbook = false;
 let MULTI_EXPENSE_MODE = false;
 let MULTI_SPLIT_MODE = "equal";
 let PENDING_GROUP_SETTLEMENT = null;
+let SAVING_SETTLEMENT = false;
 let SHOW_ALL_GROUP_DEBTS = false;
 
 const TRANSLATIONS = {
@@ -903,6 +904,31 @@ function makeSwipeableRow(row, entry, onOpen) {
   content.className = "history-row-content";
   while (row.firstChild) content.appendChild(row.firstChild);
 
+  if (entry.type === "settlement") {
+    row.classList.add("history-row");
+    row.replaceChildren(content);
+    if (signedInUser?.uid && canDeleteActiveGroup()) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "settlement-delete";
+      button.textContent = LANGUAGE === "en" ? "Delete Swish" : "Ta bort Swish";
+      button.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        if (button.disabled || !signedInUser?.uid || !canDeleteActiveGroup()) return;
+        const message = LANGUAGE === "en"
+          ? "Delete this recorded Swish of " + kr(entry.amount) + "? The balance will be recalculated. No money is transferred."
+          : "Ta bort denna registrerade Swish på " + kr(entry.amount) + "? Balansen räknas om. Inga pengar flyttas.";
+        if (!confirm(message)) return;
+        button.disabled = true;
+        try { await store.remove(entry.id); }
+        catch (error) { showReceiptError(creditUI.error(error)); }
+        finally { button.disabled = false; }
+      });
+      content.appendChild(button);
+    }
+    return content;
+  }
+
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
   deleteButton.className = "swipe-delete";
@@ -1340,7 +1366,7 @@ function onSettleClick() {
     return;
   }
   if (usesGroupExperience()) {
-    PENDING_GROUP_SETTLEMENT = { toUid: btn.dataset.payeeUid, amount: Number(amount) };
+    PENDING_GROUP_SETTLEMENT = { id: `swish-${crypto.randomUUID()}`, fromUid: currentMemberId(), ts: Date.now(), toUid: btn.dataset.payeeUid, amount: Number(amount) };
   }
   if (!usesGroupExperience()) PENDING_PAIR_SETTLEMENT = { id: `swish-${crypto.randomUUID()}`, payer: CURRENT_USER, amount: Number(amount), ts: Date.now() };
   const link = buildSwishLink(payee, amount, settlementMessage());
@@ -1350,32 +1376,38 @@ function onSettleClick() {
 }
 
 async function confirmSettlement() {
-  if (usesGroupExperience()) {
-    const transaction = PENDING_GROUP_SETTLEMENT
-      ? { fromUid: currentMemberId(), toUid: PENDING_GROUP_SETTLEMENT.toUid, amount: PENDING_GROUP_SETTLEMENT.amount }
-      : optimizedSwishPlan(ENTRIES).find((item) => item.fromUid === currentMemberId());
-    if (!transaction) return;
-    const recipientUid = transaction.toUid;
-    const payerProfile = activeGroupProfiles().find(([uid]) => uid === currentMemberId())?.[1];
-    await store.add({
-      type: "settlement",
-      payer: payerProfile?.slot || CURRENT_USER,
-      payerUid: currentMemberId(),
-      recipientUid,
-      amount: transaction.amount,
-      ts: Date.now(),
-    });
+  if (SAVING_SETTLEMENT) return;
+  SAVING_SETTLEMENT = true;
+  const button = document.getElementById("confirm-settle");
+  button.disabled = true;
+  try {
+    if (usesGroupExperience()) {
+      const pending = PENDING_GROUP_SETTLEMENT;
+      if (!pending || pending.fromUid !== currentMemberId()) return;
+      const payerProfile = activeGroupProfiles().find(([uid]) => uid === pending.fromUid)?.[1];
+      await store.createIfMissing(pending.id, {
+        type: "settlement",
+        payer: payerProfile?.slot || CURRENT_USER,
+        payerUid: pending.fromUid,
+        recipientUid: pending.toUid,
+        amount: pending.amount,
+        ts: pending.ts,
+      });
+      if (PENDING_GROUP_SETTLEMENT === pending) PENDING_GROUP_SETTLEMENT = null;
+    } else {
+      const pending = PENDING_PAIR_SETTLEMENT;
+      if (!pending || pending.payer !== CURRENT_USER) return;
+      await store.createIfMissing(pending.id, { type: "settlement", payer: pending.payer, amount: pending.amount, ts: pending.ts });
+      if (PENDING_PAIR_SETTLEMENT === pending) PENDING_PAIR_SETTLEMENT = null;
+    }
     document.getElementById("settle-panel").hidden = true;
-    PENDING_GROUP_SETTLEMENT = null;
     document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
+  } catch (error) {
+    showReceiptError(creditUI.error(error));
+  } finally {
+    SAVING_SETTLEMENT = false;
+    button.disabled = false;
   }
-  const pending = PENDING_PAIR_SETTLEMENT;
-  if (!pending || pending.payer !== CURRENT_USER) return;
-  await store.createIfMissing(pending.id, { type: "settlement", payer: pending.payer, amount: pending.amount, ts: pending.ts });
-  PENDING_PAIR_SETTLEMENT = null;
-  document.getElementById("settle-panel").hidden = true;
-  document.getElementById("saldo-card").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ============================================================
@@ -2761,7 +2793,7 @@ document.getElementById("swish-suggestions").addEventListener("click", (event) =
     window.alert(t("missingSwish"));
     return;
   }
-  PENDING_GROUP_SETTLEMENT = { toUid: payeeUid, amount: Number(amount) };
+  PENDING_GROUP_SETTLEMENT = { id: `swish-${crypto.randomUUID()}`, fromUid: currentMemberId(), ts: Date.now(), toUid: payeeUid, amount: Number(amount) };
   document.getElementById("settle-panel").hidden = false;
   window.open(buildSwishLink(payee, amount, settlementMessage()), "_blank", "noopener,noreferrer");
 });
@@ -3894,3 +3926,4 @@ creditUI = createCreditUI({
 });
 applyLanguage();
 initializeFirebase().catch((error) => showError("auth-error", error));
+

@@ -10,6 +10,11 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/bankbooks/$(bankbookId)).data.memberIds;
     }
 
+    function isOwner(bankbookId) {
+      return signedIn()
+        && request.auth.uid == get(/databases/$(database)/documents/bankbooks/$(bankbookId)).data.createdBy;
+    }
+
     match /users/{userId} {
       allow create, read, update: if signedIn() && request.auth.uid == userId;
       allow delete: if false;
@@ -23,7 +28,8 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if signedIn() && request.auth.uid in resource.data.memberIds;
 
-      allow update: if signedIn() && (
+      allow update: if signedIn()
+        && request.resource.data.createdBy == resource.data.createdBy && (
         (
           request.auth.uid in resource.data.memberIds
           && request.resource.data.memberIds == resource.data.memberIds
@@ -40,7 +46,11 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == resource.data.createdBy;
 
       match /entries/{entryId} {
-        allow read, create, update, delete: if isMember(bankbookId);
+        allow read, create: if isMember(bankbookId);
+        allow update: if isMember(bankbookId)
+          && (resource.data.get("type", "") != "settlement" || isOwner(bankbookId));
+        allow delete: if isMember(bankbookId)
+          && (resource.data.get("type", "") != "settlement" || isOwner(bankbookId));
       }
 
       match /receipts/{entryId} {
@@ -58,3 +68,4 @@ service cloud.firestore {
     }
   }
 }
+
