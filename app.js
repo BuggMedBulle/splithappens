@@ -818,6 +818,7 @@ function renderLoadingState() {
 }
 
 function render() {
+  renderManualSwishAction();
   if (GROUP_DATA_LOADING) {
     renderLoadingState();
     return;
@@ -904,28 +905,9 @@ function makeSwipeableRow(row, entry, onOpen) {
   content.className = "history-row-content";
   while (row.firstChild) content.appendChild(row.firstChild);
 
-  if (entry.type === "settlement") {
+  if (entry.type === "settlement" && (!signedInUser?.uid || !canDeleteActiveGroup())) {
     row.classList.add("history-row");
     row.replaceChildren(content);
-    if (signedInUser?.uid && canDeleteActiveGroup()) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "settlement-delete";
-      button.textContent = LANGUAGE === "en" ? "Delete Swish" : "Ta bort Swish";
-      button.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        if (button.disabled || !signedInUser?.uid || !canDeleteActiveGroup()) return;
-        const message = LANGUAGE === "en"
-          ? "Delete this recorded Swish of " + kr(entry.amount) + "? The balance will be recalculated. No money is transferred."
-          : "Ta bort denna registrerade Swish på " + kr(entry.amount) + "? Balansen räknas om. Inga pengar flyttas.";
-        if (!confirm(message)) return;
-        button.disabled = true;
-        try { await store.remove(entry.id); }
-        catch (error) { showReceiptError(creditUI.error(error)); }
-        finally { button.disabled = false; }
-      });
-      content.appendChild(button);
-    }
     return content;
   }
 
@@ -936,9 +918,13 @@ function makeSwipeableRow(row, entry, onOpen) {
   deleteButton.innerHTML = '<img src="trash.svg" alt="" />';
   deleteButton.addEventListener("click", async (event) => {
     event.stopPropagation();
+    if (deleteButton.disabled) return;
+    if (entry.type === "settlement" && (!signedInUser?.uid || !canDeleteActiveGroup())) return;
     if (!confirm(t("deleteEntry"))) return;
+    deleteButton.disabled = true;
     closeSwipeRow(row);
     try { await store.remove(entry.id); } catch (error) { showReceiptError(creditUI.error(error)); }
+    finally { deleteButton.disabled = false; }
   });
 
   row.classList.add("history-row");
@@ -3927,3 +3913,103 @@ creditUI = createCreditUI({
 applyLanguage();
 initializeFirebase().catch((error) => showError("auth-error", error));
 
+
+function manualSwishEntry(fromUid, toUid, amountText, profiles) {
+  const amount = Number(String(amountText).trim().replace(",", "."));
+  const payer = profiles.find(([uid]) => uid === fromUid);
+  const recipient = profiles.find(([uid]) => uid === toUid);
+  if (!payer || !recipient || fromUid === toUid || !Number.isFinite(amount) || amount <= 0
+      || !Number.isSafeInteger(Math.round(amount * 100))
+      || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001) {
+    throw new Error(LANGUAGE === "en" ? "Choose two different participants and enter a positive amount with at most two decimals." : "Välj två olika deltagare och ange ett positivt belopp med högst två decimaler.");
+  }
+  return { type: "settlement", payer: payer[1].slot || "A", payerUid: fromUid,
+    recipientUid: toUid, amount: Math.round(amount * 100) / 100 };
+}
+
+function renderManualSwishAction() {
+  let button = document.getElementById("manual-swish-open");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "manual-swish-open";
+    button.type = "button";
+    button.className = "manual-swish-open";
+    button.addEventListener("click", openManualSwish);
+    document.getElementById("saldo-card").appendChild(button);
+  }
+  button.hidden = GROUP_DATA_LOADING || !signedInUser?.uid || !canDeleteActiveGroup() || activeGroupProfiles().length < 2;
+  button.textContent = LANGUAGE === "en" ? "Record Swish" : "Registrera Swish";
+}
+
+function openManualSwish() {
+  if (GROUP_DATA_LOADING || !signedInUser?.uid || !canDeleteActiveGroup()) return;
+  if (document.getElementById("manual-swish-dialog")) return;
+  const bookId = activeBankbook.id;
+  const profiles = activeGroupProfiles();
+  const en = LANGUAGE === "en";
+  const dialog = document.createElement("dialog");
+  dialog.id = "manual-swish-dialog";
+  dialog.className = "manual-swish-dialog";
+  dialog.setAttribute("aria-labelledby", "manual-swish-title");
+  dialog.innerHTML = `
+    <form>
+      <h2 id="manual-swish-title">${en ? "Record Swish" : "Registrera Swish"}</h2>
+      <p>${en ? "Record a payment that has already been made. No money is transferred." : "Registrera en betalning som redan har gjorts. Inga pengar flyttas."}</p>
+      <label>${en ? "From" : "Från"}<select name="from" required></select></label>
+      <label>${en ? "To" : "Till"}<select name="to" required></select></label>
+      <label>${en ? "Amount (SEK)" : "Belopp (kr)"}<input name="amount" inputmode="decimal" required placeholder="0,00" autocomplete="off"></label>
+      <p class="manual-swish-error" role="alert"></p>
+      <div class="manual-swish-actions">
+        <button type="button" data-cancel>${en ? "Cancel" : "Avbryt"}</button>
+        <button type="submit">${en ? "Record Swish" : "Registrera Swish"}</button>
+      </div>
+    </form>`;
+  const form = dialog.querySelector("form");
+  const from = form.elements.namedItem("from");
+  const to = form.elements.namedItem("to");
+  const amount = form.elements.namedItem("amount");
+  for (const [uid, profile] of profiles) {
+    from.add(new Option(profile.name || uid, uid));
+    to.add(new Option(profile.name || uid, uid));
+  }
+  to.selectedIndex = 1;
+  const submit = form.querySelector('[type="submit"]');
+  const cancel = form.querySelector("[data-cancel]");
+  const error = form.querySelector('[role="alert"]');
+  let saving = false;
+  let pending = null;
+  const close = () => { if (!saving) dialog.close(); };
+  cancel.addEventListener("click", close);
+  dialog.addEventListener("cancel", event => { if (saving) event.preventDefault(); });
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+    document.getElementById("manual-swish-open")?.focus();
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (saving) return;
+    error.textContent = "";
+    if (activeBankbook?.id !== bookId || !signedInUser?.uid || !canDeleteActiveGroup()) {
+      error.textContent = en ? "Open the group again as its owner." : "Öppna gruppen igen som gruppägare.";
+      return;
+    }
+    try {
+      if (!pending) pending = { id: `swish-${crypto.randomUUID()}`,
+        entry: { ...manualSwishEntry(from.value, to.value, amount.value, activeGroupProfiles()), ts: Date.now() } };
+    } catch (err) { error.textContent = err.message; return; }
+    saving = true;
+    submit.disabled = cancel.disabled = from.disabled = to.disabled = amount.disabled = true;
+    try {
+      await store.createIfMissing(pending.id, pending.entry);
+      saving = false;
+      dialog.close();
+    } catch (err) {
+      error.textContent = (en ? "Could not confirm saving. Retry with the same details. " : "Kunde inte bekräfta att betalningen sparats. Försök igen med samma uppgifter. ") + creditUI.error(err);
+    } finally {
+      saving = false;
+      submit.disabled = cancel.disabled = false;
+    }
+  });
+  document.body.appendChild(dialog);
+  dialog.showModal();
+}
