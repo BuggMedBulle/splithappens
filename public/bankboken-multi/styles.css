@@ -1126,3 +1126,19 @@ html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-sett
 
 #guest-form p { margin: 14px 0; line-height: 1.5; }
 .auth-card button:disabled { opacity: .5; cursor: default; }
+
+/* Keep settlement correction available on touch and desktop. */
+.settlement-delete {
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  padding: 8px;
+  background: transparent;
+  color: var(--danger, #b42318);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.settlement-delete:disabled { opacity: .5; cursor: wait; }
+.h-settle .history-row-content { flex-wrap: wrap; }
+
