@@ -1127,18 +1127,16 @@ html[data-theme="dark"] .credit-card input, html[data-theme="dark"] #credit-sett
 #guest-form p { margin: 14px 0; line-height: 1.5; }
 .auth-card button:disabled { opacity: .5; cursor: default; }
 
-/* Keep settlement correction available on touch and desktop. */
-.settlement-delete {
-  flex-shrink: 0;
-  border: 1px solid currentColor;
-  border-radius: 8px;
-  padding: 8px;
-  background: transparent;
-  color: var(--danger, #b42318);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.settlement-delete:disabled { opacity: .5; cursor: wait; }
-.h-settle .history-row-content { flex-wrap: wrap; }
 
+.manual-swish-open { margin-top: 16px; padding: 8px 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: .85rem; text-decoration: underline; cursor: pointer; }
+.manual-swish-dialog { width: min(420px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); }
+.manual-swish-dialog::backdrop { background: rgb(0 0 0 / .45); }
+.manual-swish-dialog h2 { margin: 0 0 12px; }
+.manual-swish-dialog p { line-height: 1.5; font-size: .9rem; }
+.manual-swish-dialog label { display: grid; gap: 6px; margin-top: 16px; font-size: .9rem; }
+.manual-swish-dialog input, .manual-swish-dialog select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; }
+.manual-swish-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.manual-swish-actions button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.manual-swish-actions [type="submit"] { background: var(--ink); color: var(--card); }
+.manual-swish-error { color: var(--danger); }
+.manual-swish-dialog button:disabled { opacity: .5; cursor: wait; }

@@ -41,19 +41,32 @@ test('different signed-in payer cannot confirm pending payment', async () => {
   await c.confirmSettlement();
   assert.equal(calls, 0);
 });
-const rowSource = app.slice(app.indexOf('function makeSwipeableRow('), app.indexOf('  const deleteButton =', app.indexOf('function makeSwipeableRow('))) + '\n}';
-function element() { return {children: [], classList: {add() {}}, appendChild(child) {this.children.push(child);}, replaceChildren(...children) {this.children = children;}, addEventListener(_, cb) {this.click = cb;} }; }
-for (const owner of [true, false]) test(`settlement delete button owner=${owner}`, async () => {
-  let removed = 0;
-  const c = vm.createContext({document: {createElement: element}, signedInUser: {uid:'a'}, canDeleteActiveGroup: () => owner, LANGUAGE:'sv', kr: n => n + ' kr', confirm: () => true, store: {remove: async () => removed++}, creditUI: {error:e=>e}, showReceiptError() {} });
-  vm.runInContext(rowSource, c);
-  const content = c.makeSwipeableRow(element(), {type:'settlement', id:'duplicate', amount:200});
-  assert.equal(content.children.length, owner ? 1 : 0);
-  if (owner) {
-    await content.children[0].click({stopPropagation(){}});
-    assert.equal(removed, 1);
-    c.canDeleteActiveGroup = () => false;
-    await content.children[0].click({stopPropagation(){}});
-    assert.equal(removed, 1);
+
+const manualSource = app.slice(app.indexOf('function manualSwishEntry('), app.indexOf('function renderManualSwishAction('));
+const c = vm.createContext({ LANGUAGE: 'sv' });
+vm.runInContext(manualSource, c);
+const profiles = [['a', {slot:'A'}], ['b', {slot:'B'}], ['guest', {name:'Guest'}]];
+test('manual payment preserves sender, receiver and exact amount including comma input', () => {
+  const e = c.manualSwishEntry('guest','b','123,45',profiles);
+  assert.equal(e.payerUid, 'guest'); assert.equal(e.recipientUid, 'b'); assert.equal(e.amount, 123.45);
+});
+test('manual payment rejects same participant, outsiders and invalid amounts', () => {
+  for (const args of [['a','a','10'],['missing','b','10'],['a','b','0'],['a','b','-1'],['a','b','1.001'],['a','b','abc'],['a','b','Infinity']]) {
+    assert.throws(() => c.manualSwishEntry(...args, profiles));
+  }
+});
+const rowSource = app.slice(app.indexOf('function makeSwipeableRow('), app.indexOf('function renderBalance('));
+function element() { return {children: [], handlers:{}, classList: {add(){}, contains(){return false;}}, appendChild(child) {this.children.push(child);}, replaceChildren(...children) {this.children=children;}, setAttribute(){}, addEventListener(name, cb) {this.handlers[name]=cb;} }; }
+for (const owner of [true, false]) test(`swipe delete owner=${owner}`, async () => {
+  let removed=0;
+  const c=vm.createContext({document:{createElement:element}, signedInUser:{uid:'a'}, canDeleteActiveGroup:()=>owner, t:x=>x, confirm:()=>true, closeSwipeRow(){}, store:{remove:async()=>removed++}, creditUI:{error:e=>e}, showReceiptError(){} });
+  vm.runInContext(rowSource,c);
+  const row=element(); const content=c.makeSwipeableRow(row,{type:'settlement',id:'duplicate'});
+  assert.equal(row.children.length,owner?2:1);
+  assert.equal(Boolean(content.handlers.touchstart),owner);
+  if(owner) {
+    await row.children[0].handlers.click({stopPropagation(){}}); assert.equal(removed,1);
+    c.canDeleteActiveGroup=()=>false;
+    await row.children[0].handlers.click({stopPropagation(){}}); assert.equal(removed,1);
   }
 });
